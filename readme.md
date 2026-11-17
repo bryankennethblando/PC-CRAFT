@@ -125,6 +125,7 @@ pc-craft/
 │   │       ├── troubleshooting.js          # Diagnostic workflows & interactive checks
 │   │       └── faults.js                   # Fault definitions & symptom triggers
 │   └── assets/
+│       ├── ui_design/                  # UI wireframe mockups and screen references
 │       ├── images/
 │       │   └── logos/                      # Branding, UI icons & logos
 │       ├── models/

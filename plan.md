@@ -7,9 +7,9 @@
 | Feature | Assignee | Scope | Associated Files | UI Wireframe Reference |
 | :--- | :--- | :--- | :--- | :--- |
 | **Main & Login Page** | **Blando** | Frontend & Backend | `client/index.html`<br>`client/pages/login.html`<br>`client/pages/register.html` | `PC-CRAFT · Main page.png`<br>`PC-CRAFT · Login page.png` |
-| **Learning Modules** | **Tortillas** | Frontend & Backend | `client/pages/modules.html`<br>`server/routes/module.routes.js`<br>`server/controllers/module.controller.js` | `PC-CRAFT · Module learning.png` |
+| **Learning Modules** | **Tortillas/Clyde** | Frontend & Backend | `client/pages/modules.html`<br>`server/routes/module.routes.js`<br>`server/controllers/module.controller.js` | `PC-CRAFT · Module learning.png` |
 | **Knowledge Quiz** | **Pulusan** | Frontend & Backend | `client/pages/quiz.html`<br>`server/routes/quiz.routes.js`<br>`server/controllers/quiz.controller.js` | `PC-CRAFT · Knowledge quiz.png` |
-| **Learner Progress** | **Escandor** | Frontend & Backend | `client/pages/progress.html`<br>`client/pages/dashboard.html`<br>`server/routes/progress.routes.js` | `PC-CRAFT · Learner dashboard.png` |
+| **Learner Progress** | **Escandor/Saski** | Frontend & Backend | `client/pages/progress.html`<br>`client/pages/dashboard.html`<br>`server/routes/progress.routes.js` | `PC-CRAFT · Learner dashboard.png` |
 | **3D Simulation (Assembly)** | **Blando** | **Frontend Only** | `client/pages/simulation.html`<br>`client/js/simulation/scene.js`<br>`client/js/simulation/assembly.js` | `PC-CRAFT · Assembly lab.png`<br>`PC-CRAFT · Troubleshooting lab.png` |
 
 ---

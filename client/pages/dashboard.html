@@ -1,0 +1,1896 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PC-CRAFT Learner Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        margin: 0;
+        font-family: "Inter", system-ui, sans-serif;
+        background: #f2f6fb;
+        color: #0a2a5e;
+      }
+      a {
+        color: #1d5fd6;
+        text-decoration: none;
+      }
+      a:hover {
+        color: #0f3f9e;
+      }
+      a:focus-visible,
+      button:focus-visible {
+        outline: 2px solid #1d5fd6;
+        outline-offset: 2px;
+      }
+      .pad {
+        padding-left: 48px;
+        padding-right: 48px;
+      }
+      @media (max-width: 640px) {
+        .pad {
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      style="
+        width: 100%;
+        min-height: 100%;
+        background: #f2f6fb;
+        color: #0a2a5e;
+        font-family: &quot;Inter&quot;, system-ui, sans-serif;
+        display: flex;
+        flex-direction: column;
+      "
+    >
+      <!-- Header -->
+      <header style="background: #ffffff; border-bottom: 1px solid #dce5f0">
+        <div
+          class="pad"
+          style="
+            max-width: 1440px;
+            margin: 0 auto;
+            box-sizing: border-box;
+            min-height: 87px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px 32px;
+          "
+        >
+          <a
+            href="#"
+            style="
+              display: flex;
+              align-items: center;
+              gap: 14px;
+              color: #0a2a5e;
+            "
+            aria-label="PC-CRAFT home"
+          >
+            <svg
+              width="34"
+              height="42"
+              viewBox="0 0 34 42"
+              fill="none"
+              aria-hidden="true"
+            >
+              <rect
+                x="2"
+                y="2"
+                width="30"
+                height="34"
+                rx="3"
+                stroke="#0A2A5E"
+                stroke-width="3"
+              />
+              <path d="M12 11v16l12-8z" fill="#0A2A5E" />
+              <path
+                d="M6 40h22"
+                stroke="#1D5FD6"
+                stroke-width="3"
+                stroke-linecap="round"
+              />
+            </svg>
+            <span style="display: flex; flex-direction: column; gap: 3px"
+              ><span
+                style="
+                  font-size: 21px;
+                  font-weight: 700;
+                  line-height: 1;
+                  letter-spacing: 0.01em;
+                "
+                >PC-CRAFT</span
+              ><span
+                style="
+                  font-family:
+                    &quot;JetBrains Mono&quot;, ui-monospace, monospace;
+                  font-size: 9.5px;
+                  letter-spacing: 0.2em;
+                  color: #5b6b84;
+                "
+                >Build. Learn. Assess.</span
+              ></span
+            >
+          </a>
+          <nav
+            aria-label="Primary"
+            style="
+              display: flex;
+              flex-wrap: wrap;
+              gap: 4px 32px;
+              align-items: center;
+            "
+          >
+            <a
+              href="#"
+              aria-current="page"
+              style="
+                font-size: 14px;
+                font-weight: 600;
+                color: #1d5fd6;
+                padding: 28px 0 20px;
+                border-bottom: 3px solid #1d5fd6;
+              "
+              >Overview</a
+            >
+            <a
+              href="#"
+              style="
+                font-size: 14px;
+                font-weight: 500;
+                color: #44546f;
+                padding: 28px 0 23px;
+              "
+              >Modules</a
+            >
+            <a
+              href="#"
+              style="
+                font-size: 14px;
+                font-weight: 500;
+                color: #44546f;
+                padding: 28px 0 23px;
+              "
+              >Assembly Lab</a
+            >
+            <a
+              href="#"
+              style="
+                font-size: 14px;
+                font-weight: 500;
+                color: #44546f;
+                padding: 28px 0 23px;
+              "
+              >Troubleshooting</a
+            >
+            <a
+              href="#"
+              style="
+                font-size: 14px;
+                font-weight: 500;
+                color: #44546f;
+                padding: 28px 0 23px;
+              "
+              >Quizzes</a
+            >
+          </nav>
+
+          <div style="display: flex; align-items: center; gap: 14px">
+            <button
+              type="button"
+              aria-label="Notifications"
+              style="
+                width: 44px;
+                height: 44px;
+                border: 0;
+                background: transparent;
+                color: #0a2a5e;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 22px;
+                cursor: pointer;
+              "
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                <path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" />
+              </svg>
+            </button>
+            <div style="width: 1px; height: 28px; background: #dce5f0"></div>
+            <button
+              type="button"
+              aria-label="Account menu for Alex Rivera"
+              style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                border: 0;
+                background: transparent;
+                padding: 4px;
+                cursor: pointer;
+                font-family: inherit;
+                color: #0a2a5e;
+                text-align: left;
+              "
+            >
+              <span
+                style="
+                  width: 38px;
+                  height: 38px;
+                  border-radius: 19px;
+                  background: #e3ecfb;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-size: 12px;
+                  font-weight: 700;
+                "
+                >AR</span
+              >
+              <span style="display: flex; flex-direction: column; gap: 2px"
+                ><span style="font-size: 12.5px; font-weight: 600"
+                  >Alex Rivera</span
+                ><span style="font-size: 11px; color: #5b6b84"
+                  >Foundation learner</span
+                ></span
+              >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                style="margin-left: 8px"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main style="flex: 1">
+        <div
+          class="pad"
+          style="
+            max-width: 1440px;
+            margin: 0 auto;
+            box-sizing: border-box;
+            padding-top: 32px;
+            padding-bottom: 48px;
+          "
+        >
+          <!-- Welcome -->
+          <div
+            style="
+              display: flex;
+              flex-wrap: wrap;
+              align-items: flex-start;
+              justify-content: space-between;
+              gap: 20px;
+            "
+          >
+            <div
+              style="
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                min-width: 0;
+              "
+            >
+              <div
+                style="
+                  font-family:
+                    &quot;JetBrains Mono&quot;, ui-monospace, monospace;
+                  font-size: 10.5px;
+                  letter-spacing: 0.08em;
+                  color: #5b6b84;
+                  text-transform: uppercase;
+                "
+              >
+                Your learning workspace / Tuesday, November 3
+              </div>
+              <h1
+                style="
+                  margin: 0;
+                  font-size: 34px;
+                  line-height: 1.15;
+                  font-weight: 700;
+                  letter-spacing: -0.01em;
+                  text-wrap: balance;
+                "
+              >
+                Welcome back, Alex.
+              </h1>
+              <p style="margin: 0; font-size: 15px; color: #44546f">
+                Small steps. Real skills. Keep building your know-how.
+              </p>
+            </div>
+            <button
+              type="button"
+              style="
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                height: 46px;
+                padding: 0 20px;
+                background: #fff;
+                border: 1px solid #dce5f0;
+                border-radius: 6px;
+                font-family: inherit;
+                font-size: 14px;
+                font-weight: 600;
+                color: #0a2a5e;
+                cursor: pointer;
+              "
+            >
+              Edit learner profile
+              <svg
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Tabs -->
+          <div
+            role="tablist"
+            aria-label="Workspace sections"
+            style="
+              display: flex;
+              flex-wrap: wrap;
+              gap: 4px 32px;
+              margin-top: 30px;
+              border-bottom: 1px solid #dce5f0;
+            "
+          >
+            <a
+              href="#"
+              aria-current="page"
+              style="
+                font-size: 13px;
+                font-weight: 600;
+                color: #1d5fd6;
+                padding: 12px 0;
+                border-bottom: 2px solid #1d5fd6;
+                margin-bottom: -1px;
+              "
+              >Overview</a
+            >
+            <a
+              href="#"
+              style="
+                font-size: 13px;
+                font-weight: 500;
+                color: #44546f;
+                padding: 12px 0;
+              "
+              >My learning</a
+            >
+            <a
+              href="#"
+              style="
+                font-size: 13px;
+                font-weight: 500;
+                color: #44546f;
+                padding: 12px 0;
+              "
+              >Goals</a
+            >
+            <a
+              href="#"
+              style="
+                font-size: 13px;
+                font-weight: 500;
+                color: #44546f;
+                padding: 12px 0;
+              "
+              >Achievements</a
+            >
+            <a
+              href="#"
+              style="
+                font-size: 13px;
+                font-weight: 500;
+                color: #44546f;
+                padding: 12px 0;
+              "
+              >Account settings</a
+            >
+          </div>
+
+          <!-- Body grid -->
+          <div
+            style="
+              display: flex;
+              flex-wrap: wrap;
+              gap: 24px;
+              margin-top: 28px;
+              align-items: flex-start;
+            "
+          >
+            <!-- Left column -->
+            <aside
+              style="
+                flex: 0 1 284px;
+                min-width: min(100%, 260px);
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+              "
+            >
+              <section
+                aria-label="Learner profile"
+                style="
+                  background: #fff;
+                  border: 1px solid #dce5f0;
+                  border-radius: 8px;
+                  padding: 24px;
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  gap: 0;
+                "
+              >
+                <div
+                  style="
+                    width: 74px;
+                    height: 74px;
+                    border-radius: 37px;
+                    background: #e3ecfb;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 25px;
+                    font-weight: 600;
+                  "
+                >
+                  AR
+                </div>
+                <div
+                  style="margin-top: 20px; font-size: 20px; font-weight: 700"
+                >
+                  Alex Rivera
+                </div>
+                <div style="margin-top: 10px; font-size: 12px; color: #44546f">
+                  CSS student · Joined October 2026
+                </div>
+                <div
+                  style="
+                    margin-top: 18px;
+                    font-family:
+                      &quot;JetBrains Mono&quot;, ui-monospace, monospace;
+                    font-size: 10.5px;
+                    font-weight: 500;
+                    letter-spacing: 0.04em;
+                    color: #1550b8;
+                    background: #e8f0fe;
+                    padding: 7px 10px;
+                    border-radius: 3px;
+                  "
+                >
+                  LEVEL 02 · FOUNDATION
+                </div>
+                <div
+                  style="
+                    align-self: stretch;
+                    margin-top: 26px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 9px;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: baseline;
+                    "
+                  >
+                    <span style="font-size: 12px; font-weight: 600"
+                      >Building confidence</span
+                    ><span
+                      style="
+                        font-family:
+                          &quot;JetBrains Mono&quot;, ui-monospace, monospace;
+                        font-size: 10.5px;
+                        color: #1550b8;
+                      "
+                      >640 XP</span
+                    >
+                  </div>
+                  <div
+                    style="height: 4px; background: #e1e8f2; border-radius: 2px"
+                  >
+                    <div
+                      style="
+                        width: 64%;
+                        height: 4px;
+                        background: #1d5fd6;
+                        border-radius: 2px;
+                      "
+                    ></div>
+                  </div>
+                  <div style="font-size: 10.5px; color: #5b6b84">
+                    360 XP to Level 03 · Hardware explorer
+                  </div>
+                </div>
+                <div
+                  style="
+                    align-self: stretch;
+                    margin-top: 20px;
+                    background: #fff1d6;
+                    border-radius: 6px;
+                    padding: 12px 14px;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                  "
+                >
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#8A4B00"
+                    stroke-width="1.75"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3 0 1.4.9 2.5 2.5 2.5z"
+                    />
+                  </svg>
+                  <div style="display: flex; flex-direction: column; gap: 3px">
+                    <span
+                      style="
+                        font-size: 12.5px;
+                        font-weight: 700;
+                        color: #7a4300;
+                      "
+                      >3-day learning streak</span
+                    ><span style="font-size: 10.5px; color: #8a4b00"
+                      >One focused session at a time.</span
+                    >
+                  </div>
+                </div>
+              </section>
+
+              <section
+                aria-label="My learning goals"
+                style="
+                  background: #08244f;
+                  color: #fff;
+                  border-radius: 8px;
+                  padding: 22px;
+                  display: flex;
+                  flex-direction: column;
+                "
+              >
+                <div
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                  "
+                >
+                  <h2 style="margin: 0; font-size: 16px; font-weight: 700">
+                    My learning goals
+                  </h2>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#B9CBEA"
+                    stroke-width="1.75"
+                    aria-hidden="true"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="12" r="6" />
+                    <circle cx="12" cy="12" r="2" />
+                  </svg>
+                </div>
+                <p
+                  style="
+                    margin: 22px 0 0;
+                    font-size: 14px;
+                    line-height: 1.6;
+                    max-width: 200px;
+                  "
+                >
+                  Build and diagnose a PC independently.
+                </p>
+                <div
+                  style="
+                    margin-top: 22px;
+                    font-family:
+                      &quot;JetBrains Mono&quot;, ui-monospace, monospace;
+                    font-size: 10px;
+                    letter-spacing: 0.06em;
+                    color: #a9bcdd;
+                  "
+                >
+                  THIS WEEK / NOV 02–08
+                </div>
+                <ul
+                  style="
+                    list-style: none;
+                    margin: 16px 0 0;
+                    padding: 0;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                    font-size: 11.5px;
+                    color: #e6edf9;
+                  "
+                >
+                  <li style="display: flex; align-items: center; gap: 12px">
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#FFFFFF"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-label="Done"
+                    >
+                      <path d="M20 6 9 17l-5-5" /></svg
+                    >Complete hardware basics
+                  </li>
+                  <li style="display: flex; align-items: center; gap: 12px">
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#FFFFFF"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-label="Done"
+                    >
+                      <path d="M20 6 9 17l-5-5" /></svg
+                    >Review ESD safety
+                  </li>
+                  <li style="display: flex; align-items: center; gap: 12px">
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#FFFFFF"
+                      stroke-width="2.5"
+                      aria-label="Not done"
+                    >
+                      <circle cx="12" cy="12" r="9" /></svg
+                    >Finish my first PC build
+                  </li>
+                  <li style="display: flex; align-items: center; gap: 12px">
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#FFFFFF"
+                      stroke-width="2.5"
+                      aria-label="Not done"
+                    >
+                      <circle cx="12" cy="12" r="9" /></svg
+                    >Pass hardware quiz at 80%
+                  </li>
+                </ul>
+                <div
+                  style="
+                    margin-top: 22px;
+                    height: 4px;
+                    background: #2a4573;
+                    border-radius: 2px;
+                  "
+                >
+                  <div
+                    style="
+                      width: 50%;
+                      height: 4px;
+                      background: #6fa0f0;
+                      border-radius: 2px;
+                    "
+                  ></div>
+                </div>
+                <div
+                  style="margin-top: 14px; font-size: 10.5px; color: #b3c3e0"
+                >
+                  2 of 4 weekly goals complete
+                </div>
+                <button
+                  type="button"
+                  style="
+                    margin-top: 22px;
+                    height: 38px;
+                    background: transparent;
+                    border: 1px solid #3b5a8f;
+                    border-radius: 4px;
+                    color: #fff;
+                    font-family: inherit;
+                    font-size: 12.5px;
+                    font-weight: 600;
+                    cursor: pointer;
+                  "
+                >
+                  Manage goals
+                </button>
+              </section>
+            </aside>
+
+            <!-- Right column -->
+            <div
+              style="
+                flex: 999 1 620px;
+                min-width: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 24px;
+              "
+            >
+              <!-- Stats -->
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                  gap: 16px;
+                "
+              >
+                <section
+                  aria-label="Modules complete"
+                  style="
+                    background: #fff;
+                    border: 1px solid #dce5f0;
+                    border-radius: 8px;
+                    padding: 20px 20px 18px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 14px;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: center;
+                      font-size: 11px;
+                      color: #5b6b84;
+                    "
+                  >
+                    <span>Modules complete</span
+                    ><svg
+                      width="17"
+                      height="17"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#1D5FD6"
+                      stroke-width="1.75"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z" />
+                      <path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z" />
+                    </svg>
+                  </div>
+                  <div
+                    style="
+                      font-size: 30px;
+                      font-weight: 400;
+                      line-height: 1;
+                      font-variant-numeric: tabular-nums;
+                    "
+                  >
+                    2 / 12
+                  </div>
+                  <div style="font-size: 10.5px; color: #5b6b84">
+                    Foundation track
+                  </div>
+                </section>
+                <section
+                  aria-label="Labs completed"
+                  style="
+                    background: #fff;
+                    border: 1px solid #dce5f0;
+                    border-radius: 8px;
+                    padding: 20px 20px 18px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 14px;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: center;
+                      font-size: 11px;
+                      color: #5b6b84;
+                    "
+                  >
+                    <span>Labs completed</span
+                    ><svg
+                      width="17"
+                      height="17"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#1D5FD6"
+                      stroke-width="1.75"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <rect x="5" y="5" width="14" height="14" rx="2" />
+                      <rect x="9" y="9" width="6" height="6" />
+                      <path
+                        d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"
+                      />
+                    </svg>
+                  </div>
+                  <div
+                    style="
+                      font-size: 30px;
+                      font-weight: 400;
+                      line-height: 1;
+                      font-variant-numeric: tabular-nums;
+                    "
+                  >
+                    1 / 8
+                  </div>
+                  <div style="font-size: 10.5px; color: #5b6b84">
+                    Safety orientation finished
+                  </div>
+                </section>
+                <section
+                  aria-label="Quiz average"
+                  style="
+                    background: #fff;
+                    border: 1px solid #dce5f0;
+                    border-radius: 8px;
+                    padding: 20px 20px 18px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 14px;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: center;
+                      font-size: 11px;
+                      color: #5b6b84;
+                    "
+                  >
+                    <span>Quiz average</span
+                    ><svg
+                      width="17"
+                      height="17"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#1D5FD6"
+                      stroke-width="1.75"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M8 5H6a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"
+                      />
+                      <rect x="8" y="2" width="8" height="5" rx="1" />
+                      <path d="m9 14 2 2 4-4" />
+                    </svg>
+                  </div>
+                  <div
+                    style="
+                      font-size: 30px;
+                      font-weight: 400;
+                      line-height: 1;
+                      font-variant-numeric: tabular-nums;
+                    "
+                  >
+                    85%
+                  </div>
+                  <div style="font-size: 10.5px; color: #5b6b84">
+                    Across 2 practice attempts
+                  </div>
+                </section>
+                <section
+                  aria-label="Learning time"
+                  style="
+                    background: #fff;
+                    border: 1px solid #dce5f0;
+                    border-radius: 8px;
+                    padding: 20px 20px 18px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 14px;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: center;
+                      font-size: 11px;
+                      color: #5b6b84;
+                    "
+                  >
+                    <span>Learning time</span
+                    ><svg
+                      width="17"
+                      height="17"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#1D5FD6"
+                      stroke-width="1.75"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 7v5l3 2" />
+                    </svg>
+                  </div>
+                  <div
+                    style="
+                      font-size: 30px;
+                      font-weight: 400;
+                      line-height: 1;
+                      font-variant-numeric: tabular-nums;
+                    "
+                  >
+                    3h 20m
+                  </div>
+                  <div style="font-size: 10.5px; color: #5b6b84">
+                    This week · +45 min
+                  </div>
+                </section>
+              </div>
+
+              <!-- Pick up -->
+              <div style="display: flex; flex-direction: column; gap: 16px">
+                <div
+                  style="
+                    display: flex;
+                    flex-wrap: wrap;
+                    justify-content: space-between;
+                    align-items: baseline;
+                    gap: 8px;
+                  "
+                >
+                  <h2 style="margin: 0; font-size: 20px; font-weight: 700">
+                    Pick up where you left off
+                  </h2>
+                  <a
+                    href="#"
+                    style="
+                      font-size: 12px;
+                      font-weight: 600;
+                      display: flex;
+                      align-items: center;
+                      gap: 5px;
+                    "
+                    >View my learning
+                    <svg
+                      width="11"
+                      height="11"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M7 17 17 7" />
+                      <path d="M7 7h10v10" /></svg
+                  ></a>
+                </div>
+                <div
+                  style="
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    gap: 16px;
+                  "
+                >
+                  <section
+                    aria-label="Continue lesson"
+                    style="
+                      background: #fff;
+                      border: 1px solid #dce5f0;
+                      border-radius: 8px;
+                      padding: 24px;
+                      display: flex;
+                      flex-direction: column;
+                    "
+                  >
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        font-family:
+                          &quot;JetBrains Mono&quot;, ui-monospace, monospace;
+                        font-size: 10px;
+                        letter-spacing: 0.06em;
+                        color: #1550b8;
+                      "
+                    >
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#1D5FD6"
+                        stroke-width="1.75"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z" />
+                        <path
+                          d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"
+                        /></svg
+                      >MODULE 03 / LESSON 02
+                    </div>
+                    <h3
+                      style="
+                        margin: 24px 0 0;
+                        font-size: 22px;
+                        line-height: 1.25;
+                        font-weight: 400;
+                        max-width: 260px;
+                        text-wrap: balance;
+                      "
+                    >
+                      Processor &amp; memory installation
+                    </h3>
+                    <div
+                      style="
+                        margin-top: 24px;
+                        font-size: 11.5px;
+                        color: #5b6b84;
+                      "
+                    >
+                      System unit assembly · 8 min read
+                    </div>
+                    <div
+                      style="
+                        margin-top: 20px;
+                        display: flex;
+                        align-items: center;
+                        gap: 16px;
+                      "
+                    >
+                      <div
+                        style="
+                          flex: 1;
+                          height: 4px;
+                          background: #e1e8f2;
+                          border-radius: 2px;
+                        "
+                      >
+                        <div
+                          style="
+                            width: 20%;
+                            height: 4px;
+                            background: #1d5fd6;
+                            border-radius: 2px;
+                          "
+                        ></div>
+                      </div>
+                      <span
+                        style="
+                          font-size: 10.5px;
+                          color: #5b6b84;
+                          white-space: nowrap;
+                        "
+                        >1 of 5 lessons complete</span
+                      >
+                    </div>
+                    <a
+                      href="#"
+                      style="
+                        margin-top: 24px;
+                        height: 38px;
+                        background: #08244f;
+                        color: #fff;
+                        border-radius: 4px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 10px;
+                        font-size: 12.5px;
+                        font-weight: 600;
+                      "
+                      >Continue lesson
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M5 12h14" />
+                        <path d="m12 5 7 7-7 7" /></svg
+                    ></a>
+                  </section>
+
+                  <section
+                    aria-label="Resume assembly lab"
+                    style="
+                      background: #eaf1fd;
+                      border: 1px solid #d3e0f5;
+                      border-radius: 8px;
+                      padding: 24px;
+                      display: flex;
+                      flex-direction: column;
+                    "
+                  >
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        font-family:
+                          &quot;JetBrains Mono&quot;, ui-monospace, monospace;
+                        font-size: 10px;
+                        letter-spacing: 0.06em;
+                        color: #1550b8;
+                      "
+                    >
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#1D5FD6"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <rect x="5" y="5" width="14" height="14" rx="2" />
+                        <rect x="9" y="9" width="6" height="6" />
+                        <path
+                          d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"
+                        /></svg
+                      >ASSEMBLY LAB / GUIDED
+                    </div>
+                    <h3
+                      style="
+                        margin: 24px 0 0;
+                        font-size: 22px;
+                        line-height: 1.25;
+                        font-weight: 400;
+                        max-width: 260px;
+                        text-wrap: balance;
+                      "
+                    >
+                      Build your first PC
+                    </h3>
+                    <div
+                      style="
+                        margin-top: 24px;
+                        font-size: 11.5px;
+                        color: #4a5b78;
+                      "
+                    >
+                      Next: install the processor · Step 3 of 8
+                    </div>
+                    <div
+                      style="
+                        margin-top: 20px;
+                        display: flex;
+                        align-items: center;
+                        gap: 16px;
+                      "
+                    >
+                      <div
+                        style="
+                          flex: 1;
+                          height: 4px;
+                          background: #d2ddf0;
+                          border-radius: 2px;
+                        "
+                      >
+                        <div
+                          style="
+                            width: 25%;
+                            height: 4px;
+                            background: #1d5fd6;
+                            border-radius: 2px;
+                          "
+                        ></div>
+                      </div>
+                      <span
+                        style="
+                          font-size: 10.5px;
+                          color: #4a5b78;
+                          white-space: nowrap;
+                        "
+                        >25% complete</span
+                      >
+                    </div>
+                    <a
+                      href="#"
+                      style="
+                        margin-top: 24px;
+                        height: 36px;
+                        background: #fff;
+                        border: 1px solid #d3e0f5;
+                        color: #0a2a5e;
+                        border-radius: 4px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 10px;
+                        font-size: 12.5px;
+                        font-weight: 600;
+                      "
+                      >Resume assembly lab
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#1D5FD6"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M5 12h14" />
+                        <path d="m12 5 7 7-7 7" /></svg
+                    ></a>
+                  </section>
+                </div>
+              </div>
+
+              <!-- Skills + activity -->
+              <div style="display: flex; flex-wrap: wrap; gap: 24px">
+                <section
+                  aria-label="Your skill foundation"
+                  style="
+                    flex: 1 1 340px;
+                    min-width: 0;
+                    background: #fff;
+                    border: 1px solid #dce5f0;
+                    border-radius: 8px;
+                    padding: 24px;
+                    display: flex;
+                    flex-direction: column;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: center;
+                    "
+                  >
+                    <h2 style="margin: 0; font-size: 17px; font-weight: 700">
+                      Your skill foundation
+                    </h2>
+                    <svg
+                      width="19"
+                      height="19"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#1D5FD6"
+                      stroke-width="1.75"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M3 3v18h18" />
+                      <path d="M7 16v-4" />
+                      <path d="M12 16V8" />
+                      <path d="M17 16v-7" />
+                    </svg>
+                  </div>
+                  <div
+                    style="
+                      margin-top: 26px;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 22px;
+                    "
+                  >
+                    <div
+                      style="display: flex; flex-direction: column; gap: 9px"
+                    >
+                      <div
+                        style="
+                          display: flex;
+                          justify-content: space-between;
+                          font-size: 11.5px;
+                          color: #44546f;
+                        "
+                      >
+                        <span>Safe servicing</span
+                        ><span
+                          style="
+                            font-family:
+                              &quot;JetBrains Mono&quot;, ui-monospace,
+                              monospace;
+                            font-size: 10.5px;
+                          "
+                          >100%</span
+                        >
+                      </div>
+                      <div
+                        style="
+                          height: 5px;
+                          background: #e1e8f2;
+                          border-radius: 2px;
+                        "
+                      >
+                        <div
+                          style="
+                            width: 100%;
+                            height: 5px;
+                            background: #1d5fd6;
+                            border-radius: 2px;
+                          "
+                        ></div>
+                      </div>
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 9px"
+                    >
+                      <div
+                        style="
+                          display: flex;
+                          justify-content: space-between;
+                          font-size: 11.5px;
+                          color: #44546f;
+                        "
+                      >
+                        <span>Hardware identification</span
+                        ><span
+                          style="
+                            font-family:
+                              &quot;JetBrains Mono&quot;, ui-monospace,
+                              monospace;
+                            font-size: 10.5px;
+                          "
+                          >70%</span
+                        >
+                      </div>
+                      <div
+                        style="
+                          height: 5px;
+                          background: #e1e8f2;
+                          border-radius: 2px;
+                        "
+                      >
+                        <div
+                          style="
+                            width: 70%;
+                            height: 5px;
+                            background: #1d5fd6;
+                            border-radius: 2px;
+                          "
+                        ></div>
+                      </div>
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 9px"
+                    >
+                      <div
+                        style="
+                          display: flex;
+                          justify-content: space-between;
+                          font-size: 11.5px;
+                          color: #44546f;
+                        "
+                      >
+                        <span>System assembly</span
+                        ><span
+                          style="
+                            font-family:
+                              &quot;JetBrains Mono&quot;, ui-monospace,
+                              monospace;
+                            font-size: 10.5px;
+                          "
+                          >25%</span
+                        >
+                      </div>
+                      <div
+                        style="
+                          height: 5px;
+                          background: #e1e8f2;
+                          border-radius: 2px;
+                        "
+                      >
+                        <div
+                          style="
+                            width: 25%;
+                            height: 5px;
+                            background: #1d5fd6;
+                            border-radius: 2px;
+                          "
+                        ></div>
+                      </div>
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 9px"
+                    >
+                      <div
+                        style="
+                          display: flex;
+                          justify-content: space-between;
+                          font-size: 11.5px;
+                          color: #44546f;
+                        "
+                      >
+                        <span>Fault diagnosis</span
+                        ><span
+                          style="
+                            font-family:
+                              &quot;JetBrains Mono&quot;, ui-monospace,
+                              monospace;
+                            font-size: 10.5px;
+                          "
+                          >10%</span
+                        >
+                      </div>
+                      <div
+                        style="
+                          height: 5px;
+                          background: #e1e8f2;
+                          border-radius: 2px;
+                        "
+                      >
+                        <div
+                          style="
+                            width: 10%;
+                            height: 5px;
+                            background: #1d5fd6;
+                            border-radius: 2px;
+                          "
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    style="margin-top: 26px; font-size: 10.5px; color: #5b6b84"
+                  >
+                    Based on completed lessons, lab tasks, and quiz results.
+                  </div>
+                </section>
+
+                <section
+                  aria-label="Recent activity"
+                  style="
+                    flex: 1.55 1 380px;
+                    min-width: 0;
+                    background: #fff;
+                    border: 1px solid #dce5f0;
+                    border-radius: 8px;
+                    padding: 24px;
+                    display: flex;
+                    flex-direction: column;
+                  "
+                >
+                  <h2 style="margin: 0; font-size: 17px; font-weight: 700">
+                    Recent activity
+                  </h2>
+                  <ul
+                    style="
+                      list-style: none;
+                      margin: 26px 0 0;
+                      padding: 0;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 22px;
+                    "
+                  >
+                    <li
+                      style="display: flex; gap: 16px; align-items: flex-start"
+                    >
+                      <span
+                        style="
+                          flex: none;
+                          width: 32px;
+                          height: 32px;
+                          border-radius: 16px;
+                          background: #e8f0fe;
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                        "
+                        ><svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#1D5FD6"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                        >
+                          <rect x="5" y="5" width="14" height="14" rx="2" />
+                          <rect x="9" y="9" width="6" height="6" />
+                          <path
+                            d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"
+                          /></svg
+                      ></span>
+                      <div
+                        style="
+                          display: flex;
+                          flex-direction: column;
+                          gap: 6px;
+                          min-width: 0;
+                        "
+                      >
+                        <span style="font-size: 12.5px; font-weight: 600"
+                          >Assembly lab in progress</span
+                        ><span style="font-size: 11.5px; color: #44546f"
+                          >Prepared the case and secured the motherboard.</span
+                        ><span
+                          style="
+                            font-family:
+                              &quot;JetBrains Mono&quot;, ui-monospace,
+                              monospace;
+                            font-size: 10px;
+                            color: #5b6b84;
+                          "
+                          >Today · 10:42 AM</span
+                        >
+                      </div>
+                    </li>
+                    <li
+                      style="display: flex; gap: 16px; align-items: flex-start"
+                    >
+                      <span
+                        style="
+                          flex: none;
+                          width: 32px;
+                          height: 32px;
+                          border-radius: 16px;
+                          background: #e8f0fe;
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                        "
+                        ><svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#1D5FD6"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path
+                            d="M8 5H6a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"
+                          />
+                          <rect x="8" y="2" width="8" height="5" rx="1" />
+                          <path d="m9 14 2 2 4-4" /></svg
+                      ></span>
+                      <div
+                        style="
+                          display: flex;
+                          flex-direction: column;
+                          gap: 6px;
+                          min-width: 0;
+                        "
+                      >
+                        <span style="font-size: 12.5px; font-weight: 600"
+                          >Safety quiz completed · 90%</span
+                        ><span style="font-size: 11.5px; color: #44546f"
+                          >Strong work on safe servicing practices.</span
+                        ><span
+                          style="
+                            font-family:
+                              &quot;JetBrains Mono&quot;, ui-monospace,
+                              monospace;
+                            font-size: 10px;
+                            color: #5b6b84;
+                          "
+                          >Yesterday · 3:15 PM</span
+                        >
+                      </div>
+                    </li>
+                    <li
+                      style="display: flex; gap: 16px; align-items: flex-start"
+                    >
+                      <span
+                        style="
+                          flex: none;
+                          width: 32px;
+                          height: 32px;
+                          border-radius: 16px;
+                          background: #e8f0fe;
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                        "
+                        ><svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#1D5FD6"
+                          stroke-width="1.75"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z" />
+                          <path
+                            d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"
+                          /></svg
+                      ></span>
+                      <div
+                        style="
+                          display: flex;
+                          flex-direction: column;
+                          gap: 6px;
+                          min-width: 0;
+                        "
+                      >
+                        <span style="font-size: 12.5px; font-weight: 600"
+                          >Hardware basics completed</span
+                        ><span style="font-size: 11.5px; color: #44546f"
+                          >Module 02 added to your completed learning.</span
+                        ><span
+                          style="
+                            font-family:
+                              &quot;JetBrains Mono&quot;, ui-monospace,
+                              monospace;
+                            font-size: 10px;
+                            color: #5b6b84;
+                          "
+                          >Nov 1 · 11:20 AM</span
+                        >
+                      </div>
+                    </li>
+                  </ul>
+                </section>
+              </div>
+
+              <!-- Milestones -->
+              <section
+                aria-label="Milestones earned"
+                style="
+                  background: #fff;
+                  border: 1px solid #dce5f0;
+                  border-radius: 8px;
+                  padding: 20px 24px;
+                  display: flex;
+                  flex-wrap: wrap;
+                  align-items: center;
+                  gap: 18px 32px;
+                "
+              >
+                <div
+                  style="
+                    flex: 0 0 180px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                  "
+                >
+                  <h2 style="margin: 0; font-size: 16px; font-weight: 700">
+                    Milestones earned
+                  </h2>
+                  <span style="font-size: 11px; color: #5b6b84"
+                    >3 achievements unlocked</span
+                  >
+                </div>
+                <div
+                  style="
+                    flex: 1 1 360px;
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 16px 40px;
+                    align-items: center;
+                    justify-content: space-between;
+                  "
+                >
+                  <div style="display: flex; align-items: center; gap: 12px">
+                    <span
+                      style="
+                        width: 38px;
+                        height: 38px;
+                        border-radius: 8px;
+                        background: #e8f0fe;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                      "
+                      ><svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#1D5FD6"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                        <path d="m9 12 2 2 4-4" /></svg></span
+                    ><span style="font-size: 12px; font-weight: 600"
+                      >Safety first</span
+                    >
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 12px">
+                    <span
+                      style="
+                        width: 38px;
+                        height: 38px;
+                        border-radius: 8px;
+                        background: #e8f0fe;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                      "
+                      ><svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#1D5FD6"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z" />
+                        <path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z" />
+                        <path d="m5 10 2 2 3-3" /></svg></span
+                    ><span style="font-size: 12px; font-weight: 600"
+                      >First module</span
+                    >
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 12px">
+                    <span
+                      style="
+                        width: 38px;
+                        height: 38px;
+                        border-radius: 8px;
+                        background: #e8f0fe;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                      "
+                      ><svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#1D5FD6"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <circle cx="12" cy="8" r="6" />
+                        <path d="M8.2 13.9 7 23l5-3 5 3-1.2-9.1" /></svg></span
+                    ><span style="font-size: 12px; font-weight: 600"
+                      >Quiz starter</span
+                    >
+                  </div>
+                </div>
+                <a
+                  href="#"
+                  aria-label="View all achievements"
+                  style="
+                    flex: none;
+                    width: 44px;
+                    height: 44px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                  "
+                  ><svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M7 17 17 7" />
+                    <path d="M7 7h10v10" /></svg
+                ></a>
+              </section>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <footer style="border-top: 1px solid #dce5f0; background: #f2f6fb">
+        <div
+          class="pad"
+          style="
+            max-width: 1440px;
+            margin: 0 auto;
+            box-sizing: border-box;
+            padding-top: 22px;
+            padding-bottom: 22px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 10px 24px;
+            font-size: 11.5px;
+            color: #44546f;
+          "
+        >
+          <span
+            >© 2026 PC-CRAFT · Learn with purpose. Build with confidence.</span
+          >
+          <span
+            style="
+              display: flex;
+              flex-wrap: wrap;
+              gap: 6px 14px;
+              align-items: center;
+            "
+            ><a href="#" style="color: #44546f">Learning support</a
+            ><span aria-hidden="true">/</span
+            ><a href="#" style="color: #44546f">Accessibility</a
+            ><span aria-hidden="true">/</span
+            ><a href="#" style="color: #44546f">Privacy</a></span
+          >
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,1340 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PC-CRAFT · Troubleshooting</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --navy: #0b2248;
+        --navy-2: #123062;
+        --blue: #1f56c4;
+        --blue-soft: #e8f0fc;
+        --blue-soft-2: #eef3fb;
+        --blue-line: #6f98e6;
+        --text: #1a2440;
+        --muted: #5b6682;
+        --faint: #8a93a8;
+        --line: #dfe4ee;
+        --bg: #f0f3f8;
+        --green: #1f7a4d;
+        --green-soft: #e6f3ec;
+        --amber-bg: #fdf0d5;
+        --amber-text: #8a5a00;
+        --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Inter", system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 14px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      button,
+      select {
+        font-family: inherit;
+      }
+      button {
+        cursor: pointer;
+      }
+
+      /* Header */
+      .topbar {
+        height: 88px;
+        background: #fff;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 48px 0 62px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        width: 260px;
+      }
+      .brand-name {
+        font-weight: 700;
+        font-size: 20px;
+        color: var(--navy);
+        line-height: 1.1;
+      }
+      .brand-tag {
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 2.2px;
+        color: var(--faint);
+        margin-top: 6px;
+      }
+      nav {
+        display: flex;
+        gap: 28px;
+        height: 88px;
+        align-items: stretch;
+      }
+      nav a {
+        display: flex;
+        align-items: center;
+        position: relative;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      nav a.active {
+        color: var(--blue);
+        font-weight: 600;
+      }
+      nav a.active::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        bottom: 22px;
+        width: 24px;
+        height: 3px;
+        border-radius: 2px;
+        background: var(--blue);
+      }
+      .user {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        width: 260px;
+        justify-content: flex-end;
+      }
+      .bell {
+        background: none;
+        border: none;
+        color: var(--navy);
+        display: flex;
+      }
+      .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--blue-soft);
+        color: var(--navy);
+        font-weight: 700;
+        font-size: 12px;
+        display: grid;
+        place-items: center;
+      }
+      .user-meta {
+        line-height: 1.3;
+      }
+      .user-meta b {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--navy);
+      }
+      .user-meta span {
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      /* Page */
+      .page {
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 30px 48px 32px;
+      }
+      .crumbs {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.8px;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+      .hero {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-top: 10px;
+      }
+      h1 {
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--navy);
+        letter-spacing: -0.6px;
+        line-height: 1.2;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 15px;
+        margin-top: 14px;
+      }
+      .btn {
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 14.5px;
+        color: var(--navy);
+        padding: 0 20px;
+        height: 46px;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .btn:hover {
+        background: #f6f8fc;
+      }
+      .btn.save {
+        margin-top: -6px;
+      }
+
+      /* Case banner */
+      .case {
+        margin-top: 24px;
+        background: var(--navy);
+        border-radius: 10px;
+        height: 112px;
+        display: flex;
+        align-items: center;
+        padding: 0 24px;
+        color: #fff;
+      }
+      .case .ico {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        background: #27406b;
+        display: grid;
+        place-items: center;
+        flex: none;
+        color: #e6edf8;
+      }
+      .case .story {
+        flex: 1;
+        padding: 0 40px 0 24px;
+      }
+      .case .mono {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        letter-spacing: 0.8px;
+        color: #a7b6d3;
+        text-transform: uppercase;
+      }
+      .case p {
+        font-size: 13.5px;
+        line-height: 1.65;
+        margin-top: 8px;
+        max-width: 800px;
+      }
+      .case .meta {
+        border-left: 1px solid #2c4676;
+        padding-left: 32px;
+        font-size: 12px;
+        line-height: 2.1;
+        width: 440px;
+        flex: none;
+      }
+
+      /* Layout */
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 482px;
+        gap: 24px;
+        margin-top: 24px;
+        align-items: start;
+      }
+      .col {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .card {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+      }
+
+      /* System inspection */
+      .insp {
+        overflow: hidden;
+      }
+      .insp-head {
+        height: 52px;
+        display: flex;
+        align-items: center;
+        padding: 0 19px;
+        gap: 28px;
+        background: #fff;
+      }
+      .insp-head h2 {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--navy);
+      }
+      .led {
+        background: var(--amber-bg);
+        color: var(--amber-text);
+        font-size: 10.5px;
+        font-weight: 600;
+        padding: 5px 9px;
+        border-radius: 4px;
+        margin-left: 30px;
+        letter-spacing: 0.2px;
+      }
+      .insp-tabs {
+        margin-left: auto;
+        display: flex;
+        gap: 28px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .insp-tabs button {
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .insp-tabs button.on {
+        color: var(--blue);
+        font-weight: 600;
+      }
+      .fs {
+        background: none;
+        border: none;
+        color: var(--navy);
+        display: flex;
+        margin-left: 4px;
+      }
+      .bench {
+        background: #12294a;
+        height: 312px;
+        display: flex;
+        align-items: flex-start;
+        padding: 30px 40px 0;
+        gap: 34px;
+        position: relative;
+      }
+      .monitor {
+        width: 274px;
+        flex: none;
+        position: relative;
+      }
+      .monitor .scr {
+        border: 6px solid #5a6a82;
+        border-radius: 4px;
+        background: #07121f;
+        height: 180px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+      }
+      .monitor .scr b {
+        font-family: var(--mono);
+        font-weight: 400;
+        color: #dfe7f4;
+        font-size: 11px;
+        letter-spacing: 1.2px;
+      }
+      .monitor .scr small {
+        font-family: var(--mono);
+        font-size: 7.5px;
+        color: #4c5d79;
+        letter-spacing: 1px;
+        margin-top: 6px;
+      }
+      .monitor .neck {
+        width: 18px;
+        height: 46px;
+        background: #6d7e97;
+        margin: 0 auto;
+      }
+      .monitor .base {
+        width: 126px;
+        height: 6px;
+        border-radius: 3px;
+        background: #8a99ae;
+        margin: 0 auto;
+      }
+      .mono-s {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        letter-spacing: 0.9px;
+        text-transform: uppercase;
+      }
+      .legend {
+        position: absolute;
+        left: 21px;
+        bottom: 24px;
+        color: #a8b6cf;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .legend i {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #58c98d;
+      }
+      .boardwrap {
+        flex: 1;
+        max-width: 426px;
+      }
+      .board {
+        background: #eef3f9;
+        border-radius: 10px;
+        height: 234px;
+        display: grid;
+        place-items: center;
+      }
+      .boardcap {
+        color: #a8b6cf;
+        margin-top: 12px;
+      }
+      .safe {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: var(--green-soft);
+        color: var(--green);
+        font-size: 11.5px;
+        height: 40px;
+        padding: 0 19px;
+      }
+
+      /* Evidence */
+      .ev {
+        padding: 22px 23px 26px;
+      }
+      .ev-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .ev-head h2 {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--navy);
+      }
+      .count {
+        background: var(--blue-soft);
+        color: var(--blue);
+        font-size: 10.5px;
+        font-weight: 600;
+        padding: 5px 9px;
+        border-radius: 4px;
+        letter-spacing: 0.3px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 22px;
+      }
+      th {
+        font-family: var(--mono);
+        font-weight: 400;
+        font-size: 9px;
+        letter-spacing: 0.9px;
+        color: var(--muted);
+        text-align: left;
+        text-transform: uppercase;
+        padding: 0 0 11px;
+        border-bottom: 1px solid var(--line);
+      }
+      th:last-child,
+      td:last-child {
+        text-align: right;
+      }
+      td {
+        font-size: 12px;
+        color: var(--muted);
+        height: 40px;
+      }
+      td:first-child {
+        color: var(--navy);
+        font-weight: 600;
+        width: 186px;
+      }
+      tbody tr:first-child td {
+        padding-top: 10px;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 10.5px;
+        font-weight: 500;
+        padding: 4px 10px;
+        border-radius: 4px;
+      }
+      .tag.out {
+        background: #eef1f6;
+        color: var(--muted);
+      }
+      .tag.rel {
+        background: var(--amber-bg);
+        color: var(--amber-text);
+      }
+      .tip {
+        background: var(--blue-soft-2);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 0 20px;
+        height: 55px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .tip svg {
+        color: var(--blue);
+        flex: none;
+      }
+
+      /* Right */
+      .follow {
+        padding: 23px 23px 23px;
+      }
+      .fl-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .fl-head h2 {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--navy);
+      }
+      .fl-head span {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--blue);
+        letter-spacing: 0.6px;
+      }
+      .phases {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-top: 20px;
+      }
+      .phase {
+        height: 28px;
+        border: none;
+        border-radius: 3px;
+        background: var(--blue-soft);
+        color: var(--muted);
+        font-size: 9.5px;
+        font-weight: 500;
+      }
+      .phase.done {
+        color: var(--blue);
+      }
+      .phase.on {
+        background: var(--navy);
+        color: #fff;
+        font-weight: 600;
+      }
+      .phase.todo {
+        background: #f3f5f9;
+        color: var(--muted);
+      }
+      .follow p.d {
+        color: var(--muted);
+        font-size: 12.5px;
+        line-height: 1.75;
+        margin-top: 25px;
+      }
+      .follow hr {
+        border: none;
+        border-top: 1px solid var(--line);
+        margin: 21px 0 18px;
+      }
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.9px;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+      .tools {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-top: 17px;
+      }
+      .tool {
+        height: 69px;
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        font-size: 10.5px;
+        color: var(--navy);
+        transition:
+          border-color 0.15s,
+          background 0.15s;
+      }
+      .tool:hover {
+        border-color: #bfcbe3;
+      }
+      .tool.on {
+        border-color: var(--blue);
+        background: var(--blue-soft);
+      }
+      .tool svg {
+        color: var(--navy);
+      }
+
+      .diag {
+        padding: 24px 23px 22px;
+      }
+      .diag h2 {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--navy);
+      }
+      .diag .s {
+        font-size: 11.5px;
+        color: var(--muted);
+        margin-top: 15px;
+      }
+      .opts {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 21px;
+      }
+      .opt {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        height: 41px;
+        padding: 0 13px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        font-size: 11.5px;
+        color: var(--muted);
+        background: #fff;
+        text-align: left;
+        width: 100%;
+      }
+      .opt:hover {
+        border-color: #bfcbe3;
+      }
+      .opt .r {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        border: 1px solid #cfd6e4;
+        flex: none;
+        display: grid;
+        place-items: center;
+      }
+      .opt.on {
+        background: var(--blue-soft);
+        border-color: var(--blue);
+        color: var(--navy);
+        font-weight: 600;
+      }
+      .opt.on .r {
+        border: 4.5px solid var(--blue);
+        background: #fff;
+      }
+      .diag label {
+        display: block;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: var(--navy);
+        margin-top: 21px;
+      }
+      .select {
+        position: relative;
+        margin-top: 14px;
+      }
+      .select select {
+        appearance: none;
+        width: 100%;
+        height: 40px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+        padding: 0 36px 0 12px;
+        font-size: 11.5px;
+        color: var(--navy);
+      }
+      .select svg {
+        position: absolute;
+        right: 13px;
+        top: 13px;
+        pointer-events: none;
+        color: var(--navy);
+      }
+      .submit {
+        width: 100%;
+        height: 46px;
+        margin-top: 16px;
+        background: var(--navy);
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+      .submit:hover {
+        background: var(--navy-2);
+      }
+      .fine {
+        font-size: 9.5px;
+        color: var(--muted);
+        margin-top: 16px;
+      }
+      .result {
+        display: none;
+        margin-top: 14px;
+        padding: 12px 14px;
+        border-radius: 6px;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      .result.ok {
+        display: block;
+        background: var(--green-soft);
+        color: var(--green);
+      }
+      .result.no {
+        display: block;
+        background: var(--amber-bg);
+        color: var(--amber-text);
+      }
+
+      footer {
+        border-top: 1px solid var(--line);
+        background: #fff;
+        height: 62px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 48px;
+        font-size: 11.5px;
+        color: var(--muted);
+      }
+      footer nav {
+        height: auto;
+        gap: 12px;
+        align-items: center;
+      }
+      footer nav a {
+        font-size: 11.5px;
+        font-weight: 400;
+      }
+      footer nav span {
+        color: var(--faint);
+      }
+
+      @media (max-width: 1100px) {
+        nav {
+          display: none;
+        }
+        .topbar {
+          padding: 0 20px;
+        }
+        .page {
+          padding: 24px 20px;
+        }
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        .case {
+          height: auto;
+          flex-direction: column;
+          align-items: flex-start;
+          padding: 20px;
+          gap: 16px;
+        }
+        .case .story {
+          padding: 0;
+        }
+        .case .meta {
+          border: none;
+          padding: 0;
+          width: auto;
+        }
+        .bench {
+          flex-direction: column;
+          height: auto;
+          padding: 24px 20px 50px;
+        }
+        .monitor {
+          width: 100%;
+        }
+        footer {
+          padding: 14px 20px;
+          flex-direction: column;
+          gap: 6px;
+          height: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <svg
+          width="34"
+          height="40"
+          viewBox="0 0 34 40"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M3 4h18l10 8v24H3z"
+            stroke="#0b2248"
+            stroke-width="3"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M11 4v32M14 13l10 6-10 6z"
+            fill="#0b2248"
+            stroke="#0b2248"
+            stroke-width="2"
+            stroke-linejoin="round"
+          />
+        </svg>
+        <div>
+          <div class="brand-name">PC-CRAFT</div>
+          <div class="brand-tag">Build. Learn. Assess</div>
+        </div>
+      </div>
+      <nav>
+        <a href="#">Overview</a><a href="#">Modules</a
+        ><a href="#">Assembly lab</a>
+        <a href="#" class="active">Troubleshooting</a><a href="#">Quizzes</a>
+      </nav>
+      <div class="user">
+        <button class="bell" aria-label="Notifications">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+            <path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" />
+          </svg>
+        </button>
+        <div class="avatar">AR</div>
+        <div class="user-meta">
+          <b>Alex Rivera</b><span>Foundation learner</span>
+        </div>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#0b2248"
+          stroke-width="2.4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </div>
+    </header>
+
+    <main class="page">
+      <div class="crumbs">
+        Workspace &nbsp;/&nbsp; Troubleshooting &nbsp;/&nbsp; Scenario 02
+      </div>
+      <div class="hero">
+        <div>
+          <h1>Power on. No display.</h1>
+          <p class="sub">
+            Read the symptoms, gather evidence, and isolate the fault before
+            making a repair.
+          </p>
+        </div>
+        <button class="btn save">Save &amp; exit</button>
+      </div>
+
+      <section class="case">
+        <div class="ico">
+          <svg
+            width="26"
+            height="26"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="3" y="4" width="18" height="12" rx="2" />
+            <path d="M8 20h8M12 16v4M10 8l4 4M14 8l-4 4" />
+          </svg>
+        </div>
+        <div class="story">
+          <div class="mono">Case #TS-002 &nbsp;/&nbsp; POST &amp; Memory</div>
+          <p>
+            “I upgraded my RAM yesterday. Now the fans spin, but the monitor
+            stays blank.” The computer worked before the upgrade. No operating
+            system screen appears.
+          </p>
+        </div>
+        <div class="meta">
+          Foundation · Guided<br />Estimated time: 10-15 min<br />Goal: restore
+          a successful POST
+        </div>
+      </section>
+
+      <div class="grid">
+        <!-- LEFT -->
+        <div class="col">
+          <section class="card insp">
+            <div class="insp-head">
+              <h2>System inspection</h2>
+              <span class="led">DRAM LED: ON</span>
+              <div class="insp-tabs">
+                <button class="on">Workbench</button>
+                <button>System specifications</button>
+              </div>
+              <button class="fs" aria-label="Fullscreen">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+                </svg>
+              </button>
+            </div>
+            <div class="bench">
+              <div class="monitor">
+                <div class="scr"><b>NO SIGNAL</b><small>HDMI / 01</small></div>
+                <div class="neck"></div>
+                <div class="base"></div>
+              </div>
+              <div class="boardwrap">
+                <div class="board">
+                  <svg
+                    width="300"
+                    height="196"
+                    viewBox="0 0 300 196"
+                    aria-label="Motherboard inspection view"
+                  >
+                    <rect
+                      x="1"
+                      y="1"
+                      width="298"
+                      height="194"
+                      rx="6"
+                      fill="#1b4559"
+                      stroke="#2f6b86"
+                      stroke-width="2"
+                    />
+                    <circle cx="11" cy="13" r="3" fill="#d9a441" />
+                    <circle cx="289" cy="13" r="3" fill="#d9a441" />
+                    <circle cx="11" cy="183" r="3" fill="#d9a441" />
+                    <circle cx="289" cy="183" r="3" fill="#d9a441" />
+                    <text
+                      x="166"
+                      y="20"
+                      fill="#b9d2de"
+                      font-family="JetBrains Mono,monospace"
+                      font-size="7.5"
+                      letter-spacing=".8"
+                    >
+                      02 / DIMM
+                    </text>
+                    <rect x="52" y="33" width="92" height="76" fill="#8da4ad" />
+                    <rect x="58" y="39" width="80" height="64" fill="#d9e3e8" />
+                    <text
+                      x="94"
+                      y="75"
+                      fill="#0e2a3d"
+                      font-family="JetBrains Mono,monospace"
+                      font-weight="500"
+                      font-size="10"
+                      text-anchor="middle"
+                      letter-spacing=".5"
+                    >
+                      01 / CPU
+                    </text>
+                    <text
+                      x="52"
+                      y="125"
+                      fill="#b9d2de"
+                      font-family="JetBrains Mono,monospace"
+                      font-size="7"
+                      letter-spacing=".6"
+                    >
+                      03 / RETENTION LEVER
+                    </text>
+                    <rect x="170" y="33" width="9" height="76" fill="#98adb6" />
+                    <rect x="184" y="33" width="9" height="76" fill="#7ba5f0" />
+                    <rect x="198" y="33" width="9" height="76" fill="#98adb6" />
+                    <rect x="212" y="33" width="9" height="76" fill="#98adb6" />
+                    <rect
+                      x="264"
+                      y="52"
+                      width="12"
+                      height="62"
+                      fill="#c4d3da"
+                    />
+                    <rect
+                      x="44"
+                      y="140"
+                      width="152"
+                      height="8"
+                      fill="#98adb6"
+                    />
+                    <rect
+                      x="44"
+                      y="160"
+                      width="152"
+                      height="8"
+                      fill="#98adb6"
+                    />
+                    <rect
+                      x="212"
+                      y="138"
+                      width="42"
+                      height="34"
+                      fill="#7f969f"
+                    />
+                  </svg>
+                </div>
+                <div class="mono-s boardcap">
+                  Side panel removed / Inspection view
+                </div>
+              </div>
+              <div class="mono-s legend">
+                <i></i>Fans on · No POST · No display
+              </div>
+            </div>
+            <div class="safe">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z" />
+                <path d="m8.5 12 2.5 2.5 4.5-5" />
+              </svg>
+              Power disconnected &amp; ESD protection applied for physical
+              inspection.
+            </div>
+          </section>
+
+          <section class="card ev">
+            <div class="ev-head">
+              <h2>Evidence collected</h2>
+              <span class="count" id="count">3 OBSERVATIONS</span>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 186px">Check / Tool</th>
+                  <th>Observation</th>
+                  <th>Result</th>
+                </tr>
+              </thead>
+              <tbody id="evBody"></tbody>
+            </table>
+          </section>
+
+          <div class="tip">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"
+              />
+            </svg>
+            <span
+              >A spinning fan does not confirm a successful POST. Follow the
+              diagnostic indicators and change only one variable at a
+              time.</span
+            >
+          </div>
+        </div>
+
+        <!-- RIGHT -->
+        <div class="col">
+          <section class="card follow">
+            <div class="fl-head">
+              <h2>Follow the evidence</h2>
+              <span>03 / 04</span>
+            </div>
+            <div class="phases">
+              <button class="phase done">1 · Observe</button>
+              <button class="phase done">2 · Test</button>
+              <button class="phase on">3 · Diagnose</button>
+              <button class="phase todo">4 · Verify</button>
+            </div>
+            <p class="d">
+              Use your observations to select the most likely cause. You can
+              inspect more before submitting.
+            </p>
+            <hr />
+            <div class="eyebrow">Diagnostic tools</div>
+            <div class="tools" id="tools">
+              <button class="tool on" data-t="Visual inspection">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"
+                  />
+                  <path
+                    d="M7 12s2-3.5 5-3.5 5 3.5 5 3.5-2 3.5-5 3.5-5-3.5-5-3.5z"
+                  />
+                  <circle cx="12" cy="12" r="1.2" />
+                </svg>
+                Visual inspection
+              </button>
+              <button class="tool" data-t="POST check">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M2 12h5l3-8 4 16 3-8h5" />
+                </svg>
+                POST check
+              </button>
+              <button class="tool" data-t="Cable check">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M6 3v5M10 3v5M4 8h8v3a4 4 0 0 1-8 0zM8 15v3a3 3 0 0 0 3 3h1M18 3v4M16 7h4v4a2 2 0 0 1-4 0zM18 13v3a3 3 0 0 1-3 3"
+                  />
+                </svg>
+                Cable check
+              </button>
+            </div>
+          </section>
+
+          <section class="card diag">
+            <h2>What is the most likely fault?</h2>
+            <div class="s">Choose a diagnosis supported by the evidence.</div>
+            <div class="opts" id="opts">
+              <button class="opt on" data-v="ram">
+                <span class="r"></span>RAM module not fully seated
+              </button>
+              <button class="opt" data-v="input">
+                <span class="r"></span>Incorrect monitor input selected
+              </button>
+              <button class="opt" data-v="os">
+                <span class="r"></span>Operating system boot failure
+              </button>
+              <button class="opt" data-v="psu">
+                <span class="r"></span>Power supply completely failed
+              </button>
+            </div>
+            <label for="action">Proposed next action</label>
+            <div class="select">
+              <select id="action">
+                <option>Reseat RAM, then run a POST check</option>
+                <option>Switch monitor input source</option>
+                <option>Reinstall the operating system</option>
+                <option>Replace the power supply</option>
+              </select>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </div>
+            <button class="submit" id="submit">
+              Submit diagnosis
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </button>
+            <div class="result" id="result"></div>
+            <div class="fine">
+              Your diagnosis is not final until submitted. Feedback will guide
+              you through verification.
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <span>© 2026 PC-CRAFT · Learn with purpose. Build with confidence.</span>
+      <nav>
+        <a href="#">Learning support</a><span>/</span
+        ><a href="#">Accessibility</a><span>/</span><a href="#">Privacy</a>
+      </nav>
+    </footer>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+
+      const evidence = [
+        {
+          c: "Display check",
+          o: "Monitor input and HDMI connection are correct.",
+          r: "out",
+          rl: "Ruled out",
+        },
+        {
+          c: "POST indicators",
+          o: "DRAM diagnostic LED remains illuminated.",
+          r: "rel",
+          rl: "Relevant",
+        },
+        {
+          c: "Visual inspection",
+          o: "One RAM module has an unlocked retaining clip.",
+          r: "rel",
+          rl: "Relevant",
+        },
+      ];
+      const extra = {
+        "POST check": {
+          c: "POST check",
+          o: "No beep sequence; system halts at memory initialisation.",
+          r: "rel",
+          rl: "Relevant",
+        },
+        "Cable check": {
+          c: "Cable check",
+          o: "24-pin and CPU power cables are fully connected.",
+          r: "out",
+          rl: "Ruled out",
+        },
+      };
+
+      function renderEvidence() {
+        $("evBody").innerHTML = evidence
+          .map(
+            (e) =>
+              `<tr><td>${e.c}</td><td>${e.o}</td><td><span class="tag ${e.r}">${e.rl}</span></td></tr>`,
+          )
+          .join("");
+        $("count").textContent = `${evidence.length} OBSERVATIONS`;
+      }
+      renderEvidence();
+
+      // Diagnostic tools
+      document.querySelectorAll(".tool").forEach(
+        (b) =>
+          (b.onclick = () => {
+            document
+              .querySelectorAll(".tool")
+              .forEach((x) => x.classList.remove("on"));
+            b.classList.add("on");
+            const t = b.dataset.t;
+            if (extra[t] && !evidence.some((e) => e.c === t)) {
+              evidence.push(extra[t]);
+              renderEvidence();
+            }
+          }),
+      );
+
+      // Diagnosis options
+      const actionFor = { ram: 0, input: 1, os: 2, psu: 3 };
+      let choice = "ram";
+      document.querySelectorAll(".opt").forEach(
+        (b) =>
+          (b.onclick = () => {
+            document
+              .querySelectorAll(".opt")
+              .forEach((x) => x.classList.remove("on"));
+            b.classList.add("on");
+            choice = b.dataset.v;
+            $("action").selectedIndex = actionFor[choice];
+            $("result").className = "result";
+          }),
+      );
+
+      $("submit").onclick = () => {
+        const r = $("result");
+        if (choice === "ram") {
+          r.className = "result ok";
+          r.textContent =
+            "Correct. The lit DRAM LED and the unlocked retaining clip point to a poorly seated memory module. Move on to Verify: reseat the RAM and confirm POST.";
+        } else {
+          r.className = "result no";
+          r.textContent =
+            "Not supported by the evidence. Review the DRAM LED and the visual inspection results, then try again.";
+        }
+      };
+    </script>
+  </body>
+</html>

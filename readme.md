@@ -247,13 +247,15 @@ DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=your_password
 DB_NAME=pc_craft_db
-DB_PORT=3306
+DB_PORT=3307
 JWT_SECRET=your_super_secret_jwt_key
 JWT_EXPIRES_IN=7d
 ```
 
 ### 2. Database Initialization
-Create the database and apply the initial schema:
+The implemented database uses MySQL 8.0.16+. See the [database contract](database/README.md) for migrations, development seeds, roles, and integration requirements; it supersedes the prototype data model descriptions below.
+
+Create an empty database and apply the initial schema once:
 ```bash
 mysql -u root -p -e "CREATE DATABASE pc_craft_db;"
 mysql -u root -p pc_craft_db < database/schema.sql

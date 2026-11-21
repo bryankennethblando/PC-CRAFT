@@ -1,9 +1,9 @@
 # PC-CRAFT: Interactive 3D PC Building Simulation & Troubleshooting Platform
 
 ![Three.js](https://img.shields.io/badge/Three.js-WebGL%20%2F%203D-black?logo=three.dot.js)
-![Node.js](https://img.shields.io/badge/Node.js-18+-green?logo=node.js)
+![Node.js](https://img.shields.io/badge/Node.js-22+-green?logo=node.js)
 ![Express.js](https://img.shields.io/badge/Express.js-Backend%20API-lightgrey?logo=express)
-![Database](https://img.shields.io/badge/Database-MySQL%20%2F%20PostgreSQL-blue?logo=mysql)
+![Database](https://img.shields.io/badge/Database-MySQL-blue?logo=mysql)
 ![Frontend](https://img.shields.io/badge/Frontend-Vanilla%20JS%20%2F%20HTML5%20%2F%20CSS3-orange?logo=javascript)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
@@ -25,11 +25,11 @@ The system features real-time 3D rendering with component snapping, collision de
 * **Architecture**: Vanilla ES6 modules with decoupled modules for UI, authentication, API client services, 3D scenes, and troubleshooting logic.
 
 ### **Backend (Server)**
-* **Runtime**: **Node.js** (v18+ LTS).
+* **Runtime**: **Node.js** (v22+).
 * **Framework**: **Express.js** (RESTful API architecture).
 * **Authentication & Security**:
-  * **JWT (JSON Web Tokens)**: Stateless authentication.
-  * **bcrypt / bcryptjs**: Salted password hashing.
+  * **Bearer sessions**: Expiring sessions with token digests stored in MySQL.
+  * **scrypt**: Salted password hashing.
   * **CORS & Helmet**: Security headers and cross-origin resource control.
 * **Architecture**: Layered MVC pattern:
   * `routes/`: Express endpoint routing.
@@ -39,7 +39,7 @@ The system features real-time 3D rendering with component snapping, collision de
   * `services/`: Reusable utility functions (scoring, logging, compatibility algorithms).
 
 ### **Database & Storage**
-* **Database Engine**: **MySQL** / **PostgreSQL** (Relational SQL).
+* **Database Engine**: **MySQL**.
 * **Data Management**:
   * Raw relational schema (`database/schema.sql`).
   * Migration scripts (`database/migrations/`).
@@ -50,9 +50,9 @@ The system features real-time 3D rendering with component snapping, collision de
 
 ### **Testing & DevOps**
 * **Testing**:
-  * Server unit & integration testing: **Jest** / **Supertest** (`tests/server/`).
+  * Server unit & integration testing: Node test runner with MySQL (`server/test/`).
   * Client UI & simulation testing: **Vitest** / **Playwright** (`tests/client/`).
-* **Environment**: `dotenv` for environment variable isolation (`.env.example`).
+* **Environment**: Server configuration in `.env` (`.env.example`).
 * **Agentic Support**: Custom AI workflow guidelines (`.agents/README.md`).
 
 ---
@@ -81,7 +81,7 @@ flowchart TD
     end
 
     subgraph Database["Database Storage"]
-        DB[(MySQL / PostgreSQL)]
+        DB[(MySQL)]
         Models --> DB
     end
 
@@ -171,7 +171,7 @@ pc-craft/
 │   │   ├── systemFeedback.model.js
 │   │   └── systemLog.model.js
 │   ├── middleware/                         # Express middlewares
-│   │   ├── auth.middleware.js              # JWT verification
+│   │   ├── auth.middleware.js              # Bearer session verification
 │   │   ├── role.middleware.js              # RBAC role guards
 │   │   └── errorHandler.middleware.js      # Global error responses
 │   └── services/                           # Auxiliary backend business services
@@ -229,42 +229,23 @@ pc-craft/
 ## 🚀 Getting Started
 
 ### Prerequisites
-* **Node.js** (v18.0.0 or higher)
+* **Node.js** (v22 or higher)
 * **npm** (v9.0.0 or higher)
-* **MySQL** (v8.0+) or **PostgreSQL** (v14+)
+* **MySQL** (v8.0.16 or higher)
 * A modern WebGL2-compatible browser (Chrome, Edge, Firefox, Brave)
 
 ### 1. Environment Configuration
-Copy the sample environment file and adjust your database and JWT credentials:
-```bash
-cp .env.example .env
-```
-Example `.env` configuration:
-```env
-PORT=5000
-NODE_ENV=development
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=your_password
-DB_NAME=pc_craft_db
-DB_PORT=3306
-JWT_SECRET=your_super_secret_jwt_key
-JWT_EXPIRES_IN=7d
-```
+Copy `.env.example` to `.env` if needed. Set the database credentials and frontend origin. See the [API guide](server/README.md) for configuration and endpoints.
 
 ### 2. Database Initialization
-Create the database and apply the initial schema:
-```bash
-mysql -u root -p -e "CREATE DATABASE pc_craft_db;"
-mysql -u root -p pc_craft_db < database/schema.sql
-```
+Start MySQL locally with the [database guide](database/README.md).
 
 ### 3. Server Setup
-Navigate to the server directory, install dependencies, and start the development server:
+From the repository root:
+
 ```bash
-cd server
-npm install
-npm run dev # or node server.js
+npm --prefix server ci
+npm --prefix server start
 ```
 
 ### 4. Client Setup
@@ -279,5 +260,5 @@ npx serve client
 ## 📌 Current Status & Next Steps
 
 > [!NOTE]
-> **Current Phase**: Folder structure and architecture initialized with placeholder/wireframe files.
+> **Current Phase**: MySQL schema and REST API implemented. The browser client still needs API integration.
 > UI wireframes (`client/pages/*.html`), styles (`client/css/styles.css`), and 3D GLB assets (`client/assets/models/glb/`) will be integrated next.

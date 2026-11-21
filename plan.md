@@ -6,20 +6,21 @@
 
 | Feature | Assignee | Scope | Associated Files | UI Wireframe Reference |
 | :--- | :--- | :--- | :--- | :--- |
-| **Main & Login Page** | **Blando** | Frontend & Backend | `client/index.html`<br>`client/pages/login.html`<br>`client/pages/register.html` | `PC-CRAFT · Main page.png`<br>`PC-CRAFT · Login page.png` |
-| **Learning Modules** | **Tortillas/Clyde** | Frontend & Backend | `client/pages/modules.html`<br>`server/routes/module.routes.js`<br>`server/controllers/module.controller.js` | `PC-CRAFT · Module learning.png` |
-| **Knowledge Quiz** | **Pulusan** | Frontend & Backend | `client/pages/quiz.html`<br>`server/routes/quiz.routes.js`<br>`server/controllers/quiz.controller.js` | `PC-CRAFT · Knowledge quiz.png` |
-| **Learner Progress** | **Escandor/Saski** | Frontend & Backend | `client/pages/progress.html`<br>`client/pages/dashboard.html`<br>`server/routes/progress.routes.js` | `PC-CRAFT · Learner dashboard.png` |
+| **Main & Login Page** | **Blando** | Frontend & Backend | `client/frontend/src/Public.tsx` | `PC-CRAFT · Main page.png`<br>`PC-CRAFT · Login page.png` |
+| **Learning Modules** | **Tortillas/Clyde** | Frontend & Backend | `client/frontend/src/Learning.tsx`<br>`server/routes/module.routes.js`<br>`server/controllers/module.controller.js` | `PC-CRAFT · Module learning.png` |
+| **Knowledge Quiz** | **Pulusan** | Frontend & Backend | `client/frontend/src/Quizzes.tsx`<br>`server/routes/quiz.routes.js`<br>`server/controllers/quiz.controller.js` | `PC-CRAFT · Knowledge quiz.png` |
+| **Learner Progress** | **Escandor/Saski** | Frontend & Backend | `client/frontend/src/Learning.tsx`<br>`server/routes/progress.routes.js` | `PC-CRAFT · Learner dashboard.png` |
 | **3D Simulation (Assembly)** | **Blando** | **Frontend Only** | `client/pages/simulation.html`<br>`client/js/simulation/scene.js`<br>`client/js/simulation/assembly.js` | `PC-CRAFT · Assembly lab.png`<br>`PC-CRAFT · Troubleshooting lab.png` |
 
 ---
 
 ## 🧭 Project Navigation
 
-* **Frontend (Client)**: Located in `client/`
-  * Pages: `client/pages/`
-  * Styling: `client/css/styles.css`
-  * JavaScript logic: `client/js/`
+* **Frontend (Client)**: Located in `client/frontend/`
+  * React pages and shared UI: `client/frontend/src/`
+  * Styling: `client/frontend/src/site.css` and `client/frontend/src/index.css`
+  * API client: `client/frontend/src/api.ts`
+  * Lab stubs: `client/pages/` and `client/js/`
 * **Backend (Server)**: Located in `server/`
   * API Routes: `server/routes/`
   * Controllers: `server/controllers/`

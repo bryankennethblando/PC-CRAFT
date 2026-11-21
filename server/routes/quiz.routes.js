@@ -5,8 +5,9 @@ import { learner } from '../middleware/role.middleware.js';
 import { attemptDetail, attemptList, publishedQuiz, quizDetail, quizFields, startAttempt, submitAttempt } from '../controllers/quiz.controller.js';
 
 const router = Router();
-router.get('/', endpoint({ query: pagination }, (req, { query }) => page(req.db,
-  `SELECT ${quizFields} ${publishedQuiz} ORDER BY q.quiz_id`, [], query)));
+router.get('/', endpoint({ query: pagination.extend({ module_id: id.optional() }) }, (req, { query }) => page(req.db,
+  `SELECT ${quizFields} ${publishedQuiz} ${query.module_id ? 'AND q.module_id = ?' : ''} ORDER BY q.quiz_id`,
+  query.module_id ? [query.module_id] : [], query)));
 router.get('/attempts', learner, endpoint({ query: pagination }, (req, { query }) =>
   page(req.db, attemptList, [req.user.user_id], query)));
 router.get('/attempts/:id', learner, endpoint({ params: byId }, attemptDetail));

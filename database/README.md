@@ -14,12 +14,12 @@ These roles and tables supersede the prototype descriptions in the root README.
 
 From the repository root, copy `.env.example` to `.env` and set separate,
 nonempty `DB_PASSWORD` and `MYSQL_ROOT_PASSWORD` values. Keep `.env` private.
-Docker Compose uses the official MySQL image, so no custom Dockerfile is needed.
+Compose builds on the official MySQL image and includes the numbered migrations.
 
 ```bash
 cp .env.example .env
 # Edit .env and set both passwords, then start MySQL:
-docker compose up -d --wait
+docker compose up --build -d --wait db
 docker compose exec db mysql -u pc_craft -p pc_craft_db
 ```
 
@@ -29,8 +29,8 @@ Change `DB_PORT` if port 3307 is occupied. The port binds only to localhost.
 Containers on this Compose network use host `db` and port `3306`.
 
 The named volume preserves data across restarts and `docker compose down`.
-The initial migration runs automatically only when the data volume is empty;
-do not also import `schema.sql`. Later migrations must be applied explicitly.
+Compose runs the numbered migrations in order when the data volume is empty.
+Apply later migrations explicitly to an existing volume.
 Changing passwords in `.env` does not change accounts in an existing volume;
 use `ALTER USER` with an authorized account for password changes.
 Do not use `docker compose down -v` unless you intend to delete database data.
@@ -46,28 +46,59 @@ docker compose exec db mysql -u pc_craft -p pc_craft_db -e 'source /tmp/001_deve
 
 Seeds are not loaded automatically.
 
+## Local demo accounts
+
+From the repository root, with local MySQL running and server dependencies
+installed, create a learner, an instructor (`admin`), and a super admin:
+
+```bash
+npm --prefix server run seed:local-accounts
+```
+
+The command prints the account IDs, emails, and generated passwords once.
+Store the passwords privately. If a demo email already exists, the command
+rolls back without replacing any credentials. Use the printed instructor ID
+for the [curriculum import](#import-the-curriculum). Sign in at
+`http://localhost:3000` when using the local Compose frontend.
+
 ## Manual apply
 
-Create an empty database with an operator account, then apply **either** the
-migration **or** the identical `schema.sql` snapshot, never both:
+Create an empty database with an operator account. Apply the numbered migrations
+in order, or apply `database/schema.sql` to perform the same setup in one step.
 
 ```bash
 mysql -u root -p -e 'CREATE DATABASE pc_craft_db CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;'
 mysql -u root -p pc_craft_db < database/migrations/001_initial.sql
+mysql -u root -p pc_craft_db < database/migrations/002_curriculum.sql
 mysql -u root -p pc_craft_db -e 'SELECT * FROM schema_migrations;'
 ```
 
 Database selection stays outside SQL; no hardcoded `USE` or database creation.
-Migration order is `001_initial.sql`, followed by any future numbered migrations.
-Run migrations once, serially, with a migration account. The final statement
-records `001_initial` in `schema_migrations` only after all tables are created.
+Run migrations once, serially, with a migration account. Each migration records
+its version in `schema_migrations` after completing its schema changes.
 Do not use the mysql client's `--force`: it continues after failures. Reapplying
 fails rather than silently accepting incompatible existing tables.
+
+For a database with `001_initial` already recorded, apply only the new migration.
+With Compose, copy the migration to the running container and source it from
+the MySQL client using an account with DDL privileges.
+
+```bash
+docker compose cp database/migrations/002_curriculum.sql db:/tmp/002_curriculum.sql
+docker compose exec db mysql -u root -p pc_craft_db -e 'source /tmp/002_curriculum.sql'
+```
 
 MySQL DDL commits implicitly. On partial failure, inspect the created objects and
 repair forward before recording completion. There is no destructive down migration.
 For an existing deployment, back up first and use a reviewed forward migration or
 restore procedure. Application accounts should not have DDL permission.
+
+The curriculum migration adds nullable import keys and lesson metadata and sets
+existing quiz questions and choices to published. Existing IDs, attempts and
+answers retain their relationships. To roll back the deployment before using
+per-item quiz visibility, redeploy the previous API and leave the additive
+schema in place. Keep the upgraded API once quiz items use draft or archived
+status because the previous API ignores item status.
 
 Optional, fresh development databases only:
 
@@ -81,6 +112,44 @@ Both fictional `example.invalid` accounts are disabled. Their bcrypt hashes were
 created from random passwords that were discarded. There are no login credentials
 or sessions to reuse. Set a new password through the eventual backend before
 activating a development account. Never run these seeds in production.
+
+## Import the curriculum
+
+Apply migration `002_curriculum` and install the server dependencies. Provision
+an active admin or super admin as described in the [API guide](../server/README.md).
+From the repository root, pass that account's numeric `user_id` to the importer.
+It connects using the server's repository `.env`.
+
+```bash
+npm --prefix server run import:curriculum -- 42
+```
+
+When running the full Compose stack, run the importer in the backend container:
+
+```bash
+docker compose exec backend npm run import:curriculum -- 42
+```
+
+The import creates 6 published modules, 25 published lessons, and 6 published
+quizzes with 18 questions and 54 choices. The quizzes contain three original
+questions per module with a 66% pass mark, which requires two correct answers.
+One transaction covers the import. Stable source keys let you run it again
+while preserving edits, publication status, and learner history. Change live
+content through the admin application.
+
+[module.md](seeds/module.md) is the original curriculum reference. Its module
+and lesson numbers supply the source keys and order. The importer moves reading
+time and objectives to fields and raises lesson section headings to Markdown
+level 2. All 25 lessons have a reading time. Module 06 supplies no explicit
+learning objectives for its five lessons. The 51 source self-check prompts and
+answers remain in the lessons as practice. [curriculum-quizzes.json](seeds/curriculum-quizzes.json)
+holds the module summaries and distinct graded questions. The lab scenario and
+frontend specification sections stay in the reference file.
+
+Subject-matter review items in the source include the electrical-shock and
+chemical-splash first-aid wording in lesson 01.3, XMP/EXPO stability and BIOS
+idle temperatures in 04.1, loopback and ICMP diagnosis in 05.4, and
+model-specific motherboard LED colors and fault indications in 06.3.
 
 ## Tables and relationships
 
@@ -100,7 +169,9 @@ activating a development account. Never run these seeds in production.
 All domain IDs are unsigned BIGINT primary keys. Foreign keys prevent orphans.
 Content and learner-history deletes are restricted; archive content or disable
 users instead. A module, lesson, quiz, or scenario can be `draft`, `published`, or
-`archived`. Questions, choices, and steps inherit their parent lifecycle.
+`archived`. Quiz questions and choices also carry publication status. Learners
+see published questions and choices within a published quiz and module.
+Scenario steps inherit the scenario lifecycle.
 
 Additional checks enforce percentage, positive point/order/attempt values,
 nonnegative scores, score ceilings, boolean domains, rating bounds, token digest
@@ -109,7 +180,7 @@ malformed JSON; their application-specific shape still requires backend validati
 
 ## Indexes
 
-- Unique: user email; session digest; user/lesson progress; user/quiz/attempt
+- Unique: user email; session digest; curriculum source keys; user/lesson progress; user/quiz/attempt
   number; attempt/question answers; scenario/step order; migration version.
 - Composite unique parent keys support the quiz and scenario ownership FKs.
 - Content lists: module status/order, lesson module/order, quiz module/status,
@@ -160,11 +231,11 @@ WHERE u.account_status = 'active'
   no changes to submitted attempts. These cross-row/workflow rules are not enforced
   by SQL CHECKs. Withhold `is_correct`, `expected_action`, and grading feedback
   until the API permits review.
-- Once learning content has been attempted, treat its text, choices, points,
-  pass marks, and steps as immutable. Archive and clone the parent and children
-  for revisions. FKs prevent deletion of referenced rows and cross-parent answers,
-  but do not freeze text or all content relationships. Backend must
-  enforce this policy transactionally; this schema has no revision engine.
+- Once a quiz attempt starts, treat the quiz's text, question and choice
+  publication, points, and pass mark as immutable. A revision uses a new quiz ID
+  with new questions and choices. Old attempts retain the original quiz ID and
+  answer keys. Scenario revisions also retain attempted rows. Foreign keys
+  enforce ownership while the API enforces immutability.
 - JSON is limited to scenario configuration, response details, build state,
   compatibility reports, and log metadata. Users, content, attempts, and responses
   remain relational. Validate JSON shapes and sizes at the API boundary.
@@ -182,7 +253,7 @@ python3 database/tests/check_schema.py mysql --login-path=local
 python3 database/tests/check_schema.py podman exec -i pc-craft-db-check mysql -uroot
 ```
 
-Checks cover fresh migration, snapshot parity, seeds, safe repeat rejection,
+Checks cover fresh migration, additive upgrade with existing data, snapshot parity, seeds, safe repeat rejection,
 cross-quiz/choice/scenario ownership, uniqueness, score/rating/JSON/hash checks,
 archive preservation, session expiry/revocation/heartbeat, and actorless logs.
 

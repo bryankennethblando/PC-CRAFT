@@ -1,14 +1,21 @@
 import { z } from 'zod';
 import { one, transaction } from '../config/db.js';
-import { conflict, id, log, object, requireRow, sortOrder, text } from '../http.js';
+import { conflict, contentStatus, id, log, object, requireRow, sortOrder, text } from '../http.js';
 import { cents } from './quiz.controller.js';
 
 const nullableText = max => text(max).nullable().default(null);
 const amount = (min, max) => z.number().min(min).max(max).refine(n => Math.abs(n * 100 - cents(n)) < 0.000001);
+const published = row => row.status === 'published';
+const validChoices = choices => choices.length >= 2 && choices.length <= 10 &&
+  choices.filter(choice => Boolean(choice.is_correct)).length === 1;
 const question = object({
   question_text: text(5000), points: amount(0.01, 99999.99).default(1),
-  choices: z.array(object({ choice_text: text(1000), is_correct: z.boolean() })).min(2).max(10)
-    .refine(choices => choices.filter(choice => choice.is_correct).length === 1),
+  status: contentStatus.default('published'),
+  choices: z.array(object({
+    choice_text: text(1000), is_correct: z.boolean(), status: contentStatus.default('published'),
+  })).max(10).default([]),
+}).refine(row => !published(row) || validChoices(row.choices.filter(published)), {
+  path: ['choices'], message: 'A published question needs at least two published choices and one correct published choice.',
 });
 const action = text(120);
 const step = object({
@@ -27,32 +34,34 @@ export const content = {
   modules: {
     table: 'modules', key: 'module_id', columns: ['title', 'summary', 'sort_order'], creator: true,
     shape: { title: text(200), summary: nullableText(10000), sort_order: sortOrder.default(0) },
-    history: `SELECT 1 WHERE EXISTS (SELECT 1 FROM lesson_progress JOIN lessons USING (lesson_id) WHERE module_id = ?)
-      OR EXISTS (SELECT 1 FROM quiz_attempts JOIN quizzes USING (quiz_id) WHERE module_id = ?)`,
   },
   lessons: {
-    table: 'lessons', key: 'lesson_id', columns: ['title', 'content', 'sort_order'], parent: true,
-    shape: { title: text(200), content: text(50000), sort_order: sortOrder.default(0) },
-    history: 'SELECT 1 FROM lesson_progress WHERE lesson_id = ? LIMIT 1',
+    table: 'lessons', key: 'lesson_id',
+    columns: ['title', 'content', 'sort_order', 'learning_objective', 'reading_minutes'], parent: true,
+    shape: {
+      title: text(200), content: z.string().max(50000).refine(value => value.trim().length > 0),
+      sort_order: sortOrder.default(0), learning_objective: nullableText(1000),
+      reading_minutes: z.int().min(1).max(65535).nullable().default(null),
+    },
   },
   quizzes: {
     table: 'quizzes', key: 'quiz_id', columns: ['title', 'instructions', 'pass_mark'], parent: true, creator: true,
     shape: {
       title: text(200), instructions: nullableText(10000), pass_mark: amount(0, 100).default(80),
       questions: z.array(question).max(100).default([])
-        .refine(rows => rows.reduce((total, row) => total + cents(row.points), 0) <= 99999999),
+        .refine(rows => rows.filter(published).reduce((total, row) => total + cents(row.points), 0) <= 99999999),
     },
     history: 'SELECT 1 FROM quiz_attempts WHERE quiz_id = ? LIMIT 1',
     async saveChildren(db, key, body) {
       await db.execute('DELETE c FROM quiz_choices c JOIN quiz_questions q USING (question_id) WHERE q.quiz_id = ?', [key]);
       await db.execute('DELETE FROM quiz_questions WHERE quiz_id = ?', [key]);
       for (const [index, question] of body.questions.entries()) {
-        await db.execute('INSERT INTO quiz_questions (quiz_id, question_text, points, sort_order) VALUES (?,?,?,?)',
-          [key, question.question_text, question.points, index]);
+        await db.execute(`INSERT INTO quiz_questions (quiz_id, question_text, points, sort_order, status)
+          VALUES (?,?,?,?,?)`, [key, question.question_text, question.points, index, question.status]);
         const inserted = await insertedId(db);
         for (const [order, choice] of question.choices.entries()) {
-          await db.execute('INSERT INTO quiz_choices (question_id, choice_text, is_correct, sort_order) VALUES (?,?,?,?)',
-            [inserted, choice.choice_text, choice.is_correct, order]);
+          await db.execute(`INSERT INTO quiz_choices (question_id, choice_text, is_correct, sort_order, status)
+            VALUES (?,?,?,?,?)`, [inserted, choice.choice_text, choice.is_correct, order, choice.status]);
         }
       }
     },
@@ -65,11 +74,11 @@ export const content = {
       return { questions: questions.map(row => ({ ...row, choices: byQuestion.get(row.question_id) ?? [] })) };
     },
     async checkPublish(db, key) {
-      const { questions } = await this.readChildren(db, key);
+      const questions = (await this.readChildren(db, key)).questions.filter(published);
       if (!questions.length || questions.length > 100 ||
           questions.reduce((total, row) => total + cents(row.points), 0) > 99999999 ||
-          questions.some(row => row.choices.length < 2 || row.choices.filter(choice => choice.is_correct === 1).length !== 1)) {
-        conflict('Publish a quiz with 1–100 questions and exactly one correct choice per question.');
+          questions.some(row => !validChoices(row.choices.filter(published)))) {
+        conflict('Publish a quiz with 1–100 published questions and exactly one correct published choice per question.');
       }
     },
   },
@@ -112,6 +121,9 @@ async function insertedId(db) {
 // Identifiers come from the static content definitions, never from requests.
 const get = (db, spec, key, lock = '') => one(db,
   `SELECT * FROM ${spec.table} WHERE ${spec.key} = ? ${lock}`, [key]);
+const attemptState = async (db, spec, key) => spec.table === 'quizzes'
+  ? { has_attempts: Boolean(await one(db, spec.history, [key])) }
+  : {};
 
 export function createContent(spec) {
   return async (req, { body }) => ({ data: await transaction(req.db, async db => {
@@ -138,29 +150,31 @@ export function createContent(spec) {
 export function readContent(spec) {
   return async (req, { params }) => ({ data: await transaction(req.db, async db => {
     const row = requireRow(await get(db, spec, params.id));
-    return { ...row, ...await spec.readChildren?.(db, params.id) };
+    return { ...row, ...await attemptState(db, spec, params.id), ...await spec.readChildren?.(db, params.id) };
   }) });
 }
 
 export function editContent(spec) {
   return async (req, { params, body }) => ({ data: await transaction(req.db, async db => {
     const row = requireRow(await get(db, spec, params.id, 'FOR UPDATE'));
-    const historyKeys = spec.table === 'modules' ? [params.id, params.id] : [params.id];
-    if (row.status !== 'draft' || await one(db, spec.history, historyKeys)) {
+    if (row.status !== 'draft' || (spec.history && await one(db, spec.history, [params.id]))) {
       conflict('Only drafts without learner history can be edited.');
     }
     await db.execute(`UPDATE ${spec.table} SET ${spec.columns.map(column => `${column} = ?`).join(',')}
       WHERE ${spec.key} = ?`, [...spec.columns.map(column => body[column]), params.id]);
     await spec.saveChildren?.(db, params.id, body);
     await log(db, req.user.user_id, 'content', 'edit', spec.table, params.id);
-    return get(db, spec, params.id);
+    const saved = await get(db, spec, params.id);
+    return spec.table === 'quizzes'
+      ? { ...saved, has_attempts: false, ...await spec.readChildren(db, params.id) }
+      : saved;
   }) });
 }
 
 export function changeStatus(spec) {
   return async (req, { params, body }) => ({ data: await transaction(req.db, async db => {
     const row = requireRow(await get(db, spec, params.id, 'FOR UPDATE'));
-    if (row.status === body.status) return row;
+    if (row.status === body.status) return { ...row, ...await attemptState(db, spec, params.id) };
     if (row.status === 'archived' || (body.status === 'published' && row.status !== 'draft')) {
       conflict('Only drafts can be published, and archived content cannot be reopened.');
     }
@@ -174,7 +188,7 @@ export function changeStatus(spec) {
     const publishedAt = spec.table === 'modules' && body.status === 'published' ? ', published_at = CURRENT_TIMESTAMP' : '';
     await db.execute(`UPDATE ${spec.table} SET status = ?${publishedAt} WHERE ${spec.key} = ?`, [body.status, params.id]);
     await log(db, req.user.user_id, 'content', body.status, spec.table, params.id);
-    return get(db, spec, params.id);
+    return { ...await get(db, spec, params.id), ...await attemptState(db, spec, params.id) };
   }) });
 }
 

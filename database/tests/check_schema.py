@@ -25,8 +25,8 @@ def sql(statement, error=None, database=DATABASE):
     return result.stdout.strip()
 
 
-migration = (ROOT / 'migrations/001_initial.sql').read_text()
-assert migration == (ROOT / 'schema.sql').read_text(), 'Schema snapshot differs from initial migration'
+migration, curriculum = (file.read_text() for file in sorted((ROOT / 'migrations').glob('*.sql')))
+assert migration + '\n' + curriculum == (ROOT / 'schema.sql').read_text(), 'Schema snapshot differs from migrations'
 sql(f'CREATE DATABASE `{DATABASE}`', database=None)
 try:
     sql(migration)
@@ -40,6 +40,15 @@ try:
     sql(seed, 1062)  # Refuse repeat seeding rather than overwrite data.
     assert sql('SELECT COUNT(*) FROM users') == '2'
     sql(migration, 1050)  # Refuse reapplying the baseline.
+    sql(curriculum)
+    assert sql('SELECT version FROM schema_migrations ORDER BY version').splitlines() == ['001_initial', '002_curriculum']
+    assert sql('SELECT status FROM quiz_questions WHERE question_id=1') == 'published'
+    assert sql('SELECT status FROM quiz_choices WHERE choice_id=1') == 'published'
+    assert sql('SELECT COUNT(*) FROM quiz_attempts WHERE attempt_id=1') == '1'
+    assert sql('SELECT source_key, learning_objective, reading_minutes FROM lessons WHERE lesson_id=1') == 'NULL\tNULL\tNULL'
+    sql('UPDATE lessons SET reading_minutes=0 WHERE lesson_id=1', 3819)
+    sql("UPDATE modules SET source_key='module-01' WHERE module_id=1")
+    sql("INSERT INTO modules (title, created_by, source_key) VALUES ('Duplicate', 1, 'module-01')", 1062)
     sql("INSERT INTO quizzes (quiz_id,module_id,title,created_by) VALUES (2,1,'Other quiz',1)")
     sql("INSERT INTO quiz_questions (question_id,quiz_id,question_text) VALUES (2,2,'Other question'),(3,1,'Same quiz question')")
     sql("INSERT INTO quiz_choices (choice_id,question_id,choice_text) VALUES (3,2,'Other choice'),(4,3,'Same quiz other choice')")

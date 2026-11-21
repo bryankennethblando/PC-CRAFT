@@ -6,6 +6,7 @@ import { learner } from '../middleware/role.middleware.js';
 
 const router = Router();
 router.use(learner);
+const publishedLesson = "l.status = 'published' AND m.status = 'published'";
 
 router.get('/', endpoint({}, async req => {
   const [summary, nextLesson, assembly] = await Promise.all([
@@ -13,12 +14,12 @@ router.get('/', endpoint({}, async req => {
       SELECT COUNT(*) AS lesson_count, COUNT(p.completed_at) AS completed_count
       FROM lessons l JOIN modules m USING (module_id)
       LEFT JOIN lesson_progress p ON p.lesson_id = l.lesson_id AND p.user_id = ?
-      WHERE l.status = 'published' AND m.status = 'published'`, [req.user.user_id]),
+      WHERE ${publishedLesson}`, [req.user.user_id]),
     one(req.db, `
-      SELECT l.lesson_id, l.module_id, l.title
+      SELECT l.lesson_id, l.module_id, l.title, l.reading_minutes
       FROM lessons l JOIN modules m USING (module_id)
       LEFT JOIN lesson_progress p ON p.lesson_id = l.lesson_id AND p.user_id = ?
-      WHERE l.status = 'published' AND m.status = 'published' AND p.completed_at IS NULL
+      WHERE ${publishedLesson} AND p.completed_at IS NULL
       ORDER BY p.started_at DESC, m.sort_order, m.module_id, l.sort_order, l.lesson_id LIMIT 1`, [req.user.user_id]),
     one(req.db, `
       SELECT assembly_attempt_id, mode, compatibility_status, updated_at FROM assembly_attempts
@@ -32,20 +33,24 @@ router.get('/', endpoint({}, async req => {
     next_lesson: nextLesson ?? null, resumable_assembly: assembly ?? null,
   } };
 }));
-router.get('/lessons', endpoint({ query: pagination }, (req, { query }) => page(req.db, `
-  SELECT l.lesson_id, l.module_id, l.title, COALESCE(p.status, 'not_started') AS status,
-    p.started_at, p.completed_at
-  FROM lessons l JOIN modules m USING (module_id)
-  LEFT JOIN lesson_progress p ON p.lesson_id = l.lesson_id AND p.user_id = ?
-  WHERE (l.status = 'published' AND m.status = 'published') OR p.progress_id IS NOT NULL
-  ORDER BY m.sort_order, m.module_id, l.sort_order, l.lesson_id`, [req.user.user_id], query)));
+router.get('/lessons', endpoint({ query: pagination }, async (req, { query }) => {
+  const result = await page(req.db, `
+    SELECT l.lesson_id, l.module_id, IF(${publishedLesson}, l.title, 'Unavailable lesson') AS title,
+      IF(${publishedLesson}, l.reading_minutes, NULL) AS reading_minutes,
+      (${publishedLesson}) AS available, COALESCE(p.status, 'not_started') AS status, p.started_at, p.completed_at
+    FROM lessons l JOIN modules m USING (module_id)
+    LEFT JOIN lesson_progress p ON p.lesson_id = l.lesson_id AND p.user_id = ?
+    WHERE (${publishedLesson}) OR p.progress_id IS NOT NULL
+    ORDER BY m.sort_order, m.module_id, l.sort_order, l.lesson_id`, [req.user.user_id], query);
+  return { ...result, data: result.data.map(row => ({ ...row, available: Boolean(Number(row.available)) })) };
+}));
 router.put('/lessons/:id', endpoint({
   params: byId, body: object({ status: z.enum(['in_progress', 'completed']) }),
 }, async (req, { params, body }) => {
   const data = await transaction(req.db, async db => {
     requireRow(await one(db, `
       SELECT l.lesson_id FROM lessons l JOIN modules m USING (module_id)
-      WHERE l.lesson_id = ? AND l.status = 'published' AND m.status = 'published' FOR UPDATE`, [params.id]));
+      WHERE l.lesson_id = ? AND ${publishedLesson} FOR UPDATE`, [params.id]));
     const completed = body.status === 'completed';
     await db.execute(`
       INSERT INTO lesson_progress (user_id, lesson_id, status, started_at, completed_at)

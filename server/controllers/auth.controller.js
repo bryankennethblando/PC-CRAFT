@@ -14,11 +14,15 @@ async function verify(password, verifier) {
   return match !== null && timingSafeEqual(computed, Buffer.from(match[2], 'hex'));
 }
 
-export async function register(req, { body }) {
-  const { email, first_name, last_name, password } = body;
+export async function hashPassword(password) {
   const salt = randomBytes(16);
   const key = await deriveKey(password, salt);
-  const hash = `scrypt:${salt.toString('hex')}:${key.toString('hex')}`;
+  return `scrypt:${salt.toString('hex')}:${key.toString('hex')}`;
+}
+
+export async function register(req, { body }) {
+  const { email, first_name, last_name, password } = body;
+  const hash = await hashPassword(password);
   const user = await transaction(req.db, async connection => {
     await connection.execute(
       'INSERT INTO users (first_name, last_name, email, password_hash) VALUES (?,?,?,?)',

@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import test from 'node:test';
 import mysql from 'mysql2/promise';
 import { createPool, one } from '../config/db.js';
+import { importCurriculum, readCurriculum } from '../scripts/import-curriculum.js';
 import { createApp } from '../server.js';
 
 test('PC-CRAFT API against a fresh MySQL database', async t => {
@@ -27,7 +28,10 @@ test('PC-CRAFT API against a fresh MySQL database', async t => {
   });
   await setup.query(`CREATE DATABASE \`${name}\``);
   await setup.changeUser({ database: name });
-  await setup.query(await readFile(new URL('../../database/migrations/001_initial.sql', import.meta.url), 'utf8'));
+  const migrations = new URL('../../database/migrations/', import.meta.url);
+  for (const file of (await readdir(migrations)).filter(file => file.endsWith('.sql')).sort()) {
+    await setup.query(await readFile(new URL(file, migrations), 'utf8'));
+  }
   pool = createPool({ ...options, database: name });
   const origin = 'http://localhost:3000';
   server = createApp(pool, origin).listen(0, '127.0.0.1');
@@ -102,48 +106,100 @@ test('PC-CRAFT API against a fresh MySQL database', async t => {
   await get('/modules/%ff', learner, 400);
   const { module_id } = (await post('/admin/modules', admin, { title: 'Hardware basics' })).data;
   const { lesson_id } = (await post('/admin/lessons', admin, {
-    module_id, title: 'Components', content: 'Start with the motherboard.',
+    module_id, title: 'Components', content: '    Start with the motherboard.\n',
+    reading_minutes: 5, learning_objective: 'Identify the motherboard.',
   })).data;
   await get(`/modules/${module_id}`, learner, 404);
   await patch(`/admin/lessons/${lesson_id}/status`, admin, { status: 'published' }, 409);
   await patch(`/admin/modules/${module_id}/status`, admin, { status: 'published' });
   await patch(`/admin/lessons/${lesson_id}/status`, admin, { status: 'published' });
   assert.deepEqual((await get('/modules?limit=1', learner)).meta, { page: 1, limit: 1, has_more: false });
-  assert.equal((await get(`/modules/lessons/${lesson_id}`, learner)).data.lesson_id, lesson_id);
+  const lessonPath = `/modules/lessons/${lesson_id}`;
+  const lesson = (await get(lessonPath, learner)).data;
+  assert.equal(lesson.lesson_id, lesson_id);
+  assert.equal(lesson.content, '    Start with the motherboard.\n');
+  assert.equal(lesson.learning_objective, 'Identify the motherboard.');
+  assert.equal(lesson.reading_minutes, 5);
+  assert.equal((await get('/progress', learner)).data.next_lesson.reading_minutes, 5);
+  assert.equal((await get('/progress/lessons', learner)).data[0].reading_minutes, 5);
   await put(`/progress/lessons/${lesson_id}`, learner, { status: 'completed' });
   await put(`/progress/lessons/${lesson_id}`, learner, { status: 'in_progress' });
   assert.equal((await get('/progress', learner)).data.completed_count, 1);
   assert.equal((await get('/progress', other)).data.completed_count, 0);
   await get('/progress?user_id=1', other, 400);
+  await patch(`/admin/modules/${module_id}/status`, superAdmin, { status: 'draft' });
+  await get(lessonPath, learner, 404);
+  const hiddenLesson = (await get('/progress/lessons', learner)).data[0];
+  assert.equal(hiddenLesson.available, false);
+  assert.equal(hiddenLesson.title, 'Unavailable lesson');
+  assert.equal(hiddenLesson.reading_minutes, null);
+  assert.equal(hiddenLesson.status, 'completed');
+  assert.deepEqual((await get('/progress/lessons', other)).data, []);
+  await put(`/admin/modules/${module_id}`, admin, { title: 'Hardware fundamentals' });
+  await patch(`/admin/lessons/${lesson_id}/status`, admin, { status: 'draft' });
+  await put(`/admin/lessons/${lesson_id}`, admin, { title: 'Components', content: 'Revised lesson.' });
+  await patch(`/admin/modules/${module_id}/status`, admin, { status: 'published' });
+  await get(lessonPath, learner, 404);
+  await patch(`/admin/lessons/${lesson_id}/status`, admin, { status: 'published' });
+  assert.equal((await get(lessonPath, learner)).data.content, 'Revised lesson.');
+  assert.equal((await get('/progress', learner)).data.completed_count, 1);
+  assert.equal((await get('/progress/lessons', learner)).data[0].available, true);
 
   const choiceSet = [
     { choice_text: 'Correct', is_correct: true },
     { choice_text: 'Incorrect', is_correct: false },
   ];
-  const quiz = (await post('/admin/quizzes', admin, {
-    module_id, title: 'Quick check', pass_mark: 80, questions: [
-      { question_text: 'Question one', points: 0.1, choices: choiceSet },
+  const quizDraft = {
+    module_id, title: 'Quick check', instructions: 'Pick one answer.', pass_mark: 80, questions: [
+      { question_text: 'Question one', points: 0.1, choices: [...choiceSet,
+        { choice_text: 'Retired answer', is_correct: true, status: 'archived' }] },
       { question_text: 'Question two', points: 0.2, choices: choiceSet },
+      { question_text: 'Future question', status: 'draft' },
     ],
-  })).data;
+  };
+  const { data: quiz } = await post('/admin/quizzes', admin, quizDraft);
   const quizPath = `/quizzes/${quiz.quiz_id}`;
-  await patch(`/admin/quizzes/${quiz.quiz_id}/status`, admin, { status: 'published' });
+  const adminQuizPath = `/admin/quizzes/${quiz.quiz_id}`;
+  const { title, instructions, pass_mark, questions } = quizDraft;
+  await put(adminQuizPath, learner, { title }, 403);
+  await put(adminQuizPath, admin, { title, questions: [{ question_text: 'Draft only', status: 'draft' }] });
+  await patch(`${adminQuizPath}/status`, admin, { status: 'published' }, 409);
+  await put(adminQuizPath, admin, { title, instructions, pass_mark, questions });
+  const { data: draft } = await get(adminQuizPath, admin);
+  assert.equal(draft.has_attempts, false);
+  assert.equal(draft.questions.length, 3);
+  assert.equal(draft.questions[0].choices[2].status, 'archived');
+  await patch(`${adminQuizPath}/status`, admin, { status: 'published' });
+  assert.equal((await get(`/quizzes?module_id=${module_id}`, learner)).data.length, 1);
+  assert.deepEqual((await get('/quizzes?module_id=999999999', learner)).data, []);
   const quizView = (await get(quizPath, learner)).data;
   assert.equal(JSON.stringify(quizView).includes('is_correct'), false);
+  assert.equal(quizView.questions.length, 2);
   const [first, second] = quizView.questions;
+  assert.equal(first.choices.length, 2);
   const attempt = (await post(quizPath + '/attempts', learner)).data;
   const attemptPath = `/quizzes/attempts/${attempt.attempt_id}`;
   const answers = [
     { question_id: first.question_id, selected_choice_id: first.choices[0].choice_id },
     { question_id: second.question_id, selected_choice_id: second.choices[1].choice_id },
   ];
+  const openAttempt = (await get(attemptPath, learner)).data;
+  assert.equal(openAttempt.quiz_title, quizDraft.title);
+  assert.equal(openAttempt.instructions, quizDraft.instructions);
+  assert.equal(openAttempt.answers, undefined);
+  assert.equal(JSON.stringify(openAttempt).includes('is_correct'), false);
+  assert.equal((await get('/quizzes/attempts', learner)).data[0].quiz_title, quizDraft.title);
   await get(attemptPath, other, 404);
   await post(attemptPath + '/submit', other, { answers }, 404);
   await post(attemptPath + '/submit', learner, { answers, score: 100 }, 400);
   await post(attemptPath + '/submit', learner, {
     answers: [{ question_id: first.question_id, selected_choice_id: second.choices[0].choice_id }],
   }, 400);
-  await patch(`/admin/quizzes/${quiz.quiz_id}/status`, admin, { status: 'archived' });
+  await patch(`${adminQuizPath}/status`, admin, { status: 'draft' });
+  assert.equal((await get(adminQuizPath, admin)).data.has_attempts, true);
+  await put(adminQuizPath, admin, { title: 'Cannot replace used quiz' }, 409);
+  await post(quizPath + '/attempts', learner, undefined, 404);
+  await patch(`${adminQuizPath}/status`, admin, { status: 'archived' });
   await get(quizPath, learner, 404);
 
   await setup.query(`
@@ -165,7 +221,9 @@ test('PC-CRAFT API against a fresh MySQL database', async t => {
   assert.equal(result.score, '0.10');
   assert.equal(result.max_score, '0.30');
   assert.equal(result.passed, 0);
-  assert.equal((await get(attemptPath, learner)).data.answers[0].is_correct, 1);
+  const submittedAttempt = (await get(attemptPath, learner)).data;
+  assert.equal(submittedAttempt.answers[0].is_correct, 1);
+  assert.equal(submittedAttempt.answers[1].correct_choice_id, second.choices[0].choice_id);
   await post(attemptPath + '/submit', learner, { answers }, 409);
 
   const build_state = { version: 1, parts: [
@@ -206,6 +264,21 @@ test('PC-CRAFT API against a fresh MySQL database', async t => {
   const reviewed = (await patch(`/admin/feedback/${item.feedback_id}`, superAdmin, { status: 'resolved' })).data;
   assert.equal(reviewed.reviewed_by, superUser.user_id);
   assert.notEqual(reviewed.resolved_at, null);
+
+  const curriculum = await readCurriculum();
+  await assert.rejects(importCurriculum(pool, learnerUser.user_id, curriculum), /active admin/);
+  assert.deepEqual(await importCurriculum(pool, adminUser.user_id, curriculum),
+    { modules: 6, lessons: 25, quizzes: 6, questions: 18, choices: 54 });
+  const importedLesson = await one(pool, 'SELECT lesson_id FROM lessons WHERE source_key = ?', ['pc-craft-lesson-01.1']);
+  const importedPath = `/admin/lessons/${importedLesson.lesson_id}`;
+  await patch(`${importedPath}/status`, admin, { status: 'draft' });
+  await put(importedPath, admin, { title: 'Admin-edited lesson', content: 'New body.' });
+  assert.deepEqual(await importCurriculum(pool, adminUser.user_id, curriculum),
+    { modules: 0, lessons: 0, quizzes: 0, questions: 0, choices: 0 });
+  const kept = (await get(importedPath, admin)).data;
+  assert.equal(kept.content, 'New body.');
+  assert.equal(kept.status, 'draft');
+  await get(`/modules/lessons/${importedLesson.lesson_id}`, learner, 404);
 
   await post('/auth/logout', learner, undefined, 200);
   await get('/auth/me', learner, 401);

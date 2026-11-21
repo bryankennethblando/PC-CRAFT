@@ -4,7 +4,7 @@
 ![Node.js](https://img.shields.io/badge/Node.js-22+-green?logo=node.js)
 ![Express.js](https://img.shields.io/badge/Express.js-Backend%20API-lightgrey?logo=express)
 ![Database](https://img.shields.io/badge/Database-MySQL-blue?logo=mysql)
-![Frontend](https://img.shields.io/badge/Frontend-Vanilla%20JS%20%2F%20HTML5%20%2F%20CSS3-orange?logo=javascript)
+![Frontend](https://img.shields.io/badge/Frontend-React%20%2F%20Vite-blue?logo=react)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
 **PC-CRAFT** is an interactive, web-based educational platform designed for learning computer hardware architecture, practicing hands-on 3D PC assembly, diagnosing real-world hardware/software faults, and taking structured learning modules and quizzes.
@@ -16,13 +16,13 @@ The system features real-time 3D rendering with component snapping, collision de
 ## 🛠️ Project Tech Stack
 
 ### **Frontend (Client)**
-* **Core Technologies**: HTML5, Modern Semantic CSS3 (Flexbox/Grid, CSS Custom Properties), Modular JavaScript (ES6+).
+* **Core Technologies**: React, TypeScript, Vite, and CSS.
 * **3D Graphics & Simulation**:
   * **[Three.js](https://threejs.org/)** (WebGL/WebGPU Rendering Engine).
   * **OrbitControls**: Smooth camera orbit, panning, zooming, and focal framing.
   * **GLTFLoader / DRACOLoader**: Optimized loading of 3D computer component models (`.glb` / `.gltf`).
   * **Raycasting & Collision Detection**: Interactive component picking, target slot highlight, socket compatibility check, and snap-to-place assembly.
-* **Architecture**: Vanilla ES6 modules with decoupled modules for UI, authentication, API client services, 3D scenes, and troubleshooting logic.
+* **Architecture**: The React UI lives in `client/frontend` and uses the Express REST API. Lab integration is pending.
 
 ### **Backend (Server)**
 * **Runtime**: **Node.js** (v22+).
@@ -62,10 +62,10 @@ The system features real-time 3D rendering with component snapping, collision de
 ```mermaid
 flowchart TD
     subgraph Client["Frontend Client (Browser)"]
-        UI["UI Pages (HTML/CSS)"]
+        UI["React UI"]
         ThreeScene["Three.js 3D Engine (scene.js, assembly.js)"]
         TroubleshootLogic["Troubleshooting Engine (faults.js)"]
-        APIClient["API Client (client.js)"]
+        APIClient["React API client"]
         UI --> APIClient
         ThreeScene --> APIClient
         TroubleshootLogic --> APIClient
@@ -99,31 +99,13 @@ pc-craft/
 ├── .env.example                            # Template for environment variables
 ├── .gitignore                              # Git exclusion rules
 ├── client/                                 # Frontend client application
-│   ├── index.html                          # Landing page / portal entry
-│   ├── pages/                              # UI page views
-│   │   ├── login.html                      # User login
-│   │   ├── register.html                   # Account registration
-│   │   ├── dashboard.html                  # Student overview & stats
-│   │   ├── modules.html                    # Learning modules catalog
-│   │   ├── quiz.html                       # Interactive quiz interface
-│   │   ├── simulation.html                 # 3D PC assembly sandbox
-│   │   ├── troubleshooting.html            # Diagnostic & fault-finding simulation
-│   │   ├── progress.html                   # Progress reports & certificates
-│   │   ├── instructor.html                 # Instructor course management portal
-│   │   └── admin.html                      # System admin dashboard
-│   ├── css/
-│   │   └── styles.css                      # Global and component stylesheets
-│   ├── js/
-│   │   ├── app.js                          # Core application bootstrap
-│   │   ├── auth.js                         # Session handling & token storage
-│   │   ├── api/
-│   │   │   └── client.js                   # Fetch API wrapper for backend endpoints
+│   ├── frontend/                           # React and Vite application
+│   ├── pages/                              # Lab HTML stubs
+│   │   ├── simulation.html
+│   │   └── troubleshooting.html
+│   ├── js/                                 # Lab script stubs
 │   │   ├── simulation/
-│   │   │   ├── scene.js                    # Three.js scene, lights, camera & renderer
-│   │   │   └── assembly.js                 # PC parts snapping, sockets & assembly logic
 │   │   └── troubleshooting/
-│   │       ├── troubleshooting.js          # Diagnostic workflows & interactive checks
-│   │       └── faults.js                   # Fault definitions & symptom triggers
 │   └── assets/
 │       ├── ui_design/                  # UI wireframe mockups and screen references
 │       ├── images/
@@ -228,19 +210,41 @@ pc-craft/
 
 ## 🚀 Getting Started
 
-### Prerequisites
+### Run with Docker Compose
+
+Install Docker with the Compose plugin. If `.env` is missing, copy `.env.example`
+to `.env` and set `DB_PASSWORD` and `MYSQL_ROOT_PASSWORD` to separate nonempty
+values. From the repository root, run:
+
+```bash
+docker compose up --build -d --wait
+curl --fail http://localhost:3000/api/health
+```
+
+Open http://localhost:3000. Nginx serves the React build and proxies `/api` to
+Express on the Compose network. Compose uses port 5000 for Express inside the
+network. MySQL remains accessible to local SQL clients on port 3307 by default.
+
+MySQL applies numbered migrations on a fresh data volume. For an existing volume,
+follow the [database upgrade instructions](database/README.md#manual-apply).
+To populate lessons and quizzes, follow the [curriculum import instructions](database/README.md#import-the-curriculum).
+Run `docker compose down` to stop the stack and keep the database volume.
+
+### Run the app directly
+
+#### Prerequisites
 * **Node.js** (v22 or higher)
 * **npm** (v9.0.0 or higher)
 * **MySQL** (v8.0.16 or higher)
 * A modern WebGL2-compatible browser (Chrome, Edge, Firefox, Brave)
 
-### 1. Environment Configuration
+#### 1. Environment Configuration
 Copy `.env.example` to `.env` if needed. Set the database credentials and frontend origin. See the [API guide](server/README.md) for configuration and endpoints.
 
-### 2. Database Initialization
-Start MySQL locally with the [database guide](database/README.md).
+#### 2. Database Initialization
+Start MySQL locally with the [database guide](database/README.md). To load the six modules, 25 lessons, and six quizzes, follow the [curriculum import instructions](database/README.md#import-the-curriculum).
 
-### 3. Server Setup
+#### 3. Server Setup
 From the repository root:
 
 ```bash
@@ -248,17 +252,15 @@ npm --prefix server ci
 npm --prefix server start
 ```
 
-### 4. Client Setup
-Open `client/index.html` in your browser or serve via a lightweight static server:
+#### 4. Client Setup
+
+Run the React client from the repository root:
+
 ```bash
-# Using npx serve or Live Server
-npx serve client
+npm --prefix client/frontend ci
+npm --prefix client/frontend run dev
 ```
 
----
-
-## 📌 Current Status & Next Steps
-
-> [!NOTE]
-> **Current Phase**: MySQL schema and REST API implemented. The browser client still needs API integration.
-> UI wireframes (`client/pages/*.html`), styles (`client/css/styles.css`), and 3D GLB assets (`client/assets/models/glb/`) will be integrated next.
+Open http://localhost:3000. Vite forwards `/api` to Express on
+`127.0.0.1:5000`. See the [React client guide](client/frontend/README.md) for
+production builds, the connected API routes, and the status of the lab pages.

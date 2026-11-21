@@ -51,8 +51,8 @@ export function createApp(db, origin) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const config = loadConfig();
   const pool = createPool(config.database);
-  const server = createApp(pool, config.origin).listen(config.port, '127.0.0.1', () => {
-    console.log(`PC-CRAFT API listening on http://127.0.0.1:${config.port}`);
+  const server = createApp(pool, config.origin).listen(config.port, config.host, () => {
+    console.log(`PC-CRAFT API listening on http://${config.host}:${config.port}`);
   });
   const stop = () => {
     const timeout = setTimeout(() => server.closeAllConnections(), 10000);

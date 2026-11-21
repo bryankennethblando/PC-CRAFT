@@ -4,19 +4,24 @@ import { conflict, invalid, requireRow } from '../http.js';
 export const quizFields = 'q.quiz_id, q.module_id, q.title, q.instructions, q.pass_mark';
 export const publishedQuiz = `FROM quizzes q JOIN modules m USING (module_id)
   WHERE q.status = 'published' AND m.status = 'published'`;
-const attemptFields = 'attempt_id, quiz_id, attempt_number, score, max_score, passed, started_at, submitted_at';
-export const attemptList = `SELECT ${attemptFields} FROM quiz_attempts WHERE user_id = ? ORDER BY started_at DESC, attempt_id DESC`;
+const attemptFields = `a.attempt_id, a.quiz_id, a.attempt_number, a.score, a.max_score, a.passed,
+  a.started_at, a.submitted_at, q.title AS quiz_title`;
+const attempts = 'FROM quiz_attempts a JOIN quizzes q USING (quiz_id)';
+export const attemptList = `SELECT ${attemptFields} ${attempts} WHERE a.user_id = ? ORDER BY a.started_at DESC, a.attempt_id DESC`;
+const publishedQuestions = `FROM quiz_questions q
+  LEFT JOIN quiz_choices c ON c.question_id = q.question_id AND c.status = 'published'
+  WHERE q.quiz_id = ? AND q.status = 'published'`;
 
 export const cents = amount => Math.round(Number(amount) * 100);
 const decimal = value => (value / 100).toFixed(2);
 const ownedAttempt = (db, user, id, lock = '') => one(db,
-  `SELECT ${attemptFields} FROM quiz_attempts WHERE user_id = ? AND attempt_id = ? ${lock}`, [user, id]);
+  `SELECT ${attemptFields}, q.instructions, q.pass_mark ${attempts} WHERE a.user_id = ? AND a.attempt_id = ? ${lock}`, [user, id]);
 
 async function questions(db, quizId) {
   const [rows] = await db.execute(`
     SELECT q.question_id, q.question_text, q.points, c.choice_id, c.choice_text
-    FROM quiz_questions q LEFT JOIN quiz_choices c USING (question_id)
-    WHERE q.quiz_id = ? ORDER BY q.sort_order, q.question_id, c.sort_order, c.choice_id`, [quizId]);
+    ${publishedQuestions}
+    ORDER BY q.sort_order, q.question_id, c.sort_order, c.choice_id`, [quizId]);
   const grouped = new Map();
   for (const { question_id, question_text, points, choice_id, choice_text } of rows) {
     if (!grouped.has(question_id)) grouped.set(question_id, { question_id, question_text, points, choices: [] });
@@ -26,8 +31,10 @@ async function questions(db, quizId) {
 }
 
 export async function quizDetail(req, { params }) {
-  const quiz = requireRow(await one(req.db, `SELECT ${quizFields} ${publishedQuiz} AND q.quiz_id = ?`, [params.id]));
-  return { data: { ...quiz, questions: await questions(req.db, params.id) } };
+  return { data: await transaction(req.db, async db => {
+    const quiz = requireRow(await one(db, `SELECT ${quizFields} ${publishedQuiz} AND q.quiz_id = ?`, [params.id]));
+    return { ...quiz, questions: await questions(db, params.id) };
+  }) };
 }
 
 export async function startAttempt(req, { params }) {
@@ -38,7 +45,7 @@ export async function startAttempt(req, { params }) {
     [req.user.user_id, params.id]);
     await db.execute('INSERT INTO quiz_attempts (user_id, quiz_id, attempt_number) VALUES (?,?,?)',
       [req.user.user_id, params.id, next_number]);
-    return one(db, `SELECT ${attemptFields} FROM quiz_attempts WHERE attempt_id = LAST_INSERT_ID()`);
+    return one(db, `SELECT ${attemptFields} ${attempts} WHERE a.attempt_id = LAST_INSERT_ID()`);
   }) };
 }
 
@@ -47,20 +54,21 @@ export async function attemptDetail(req, { params }) {
   const data = { ...attempt, questions: await questions(req.db, attempt.quiz_id) };
   if (attempt.submitted_at) {
     [data.answers] = await req.db.execute(`
-      SELECT question_id, selected_choice_id, is_correct, points_awarded
-      FROM quiz_answers WHERE attempt_id = ? ORDER BY question_id`, [params.id]);
+      SELECT a.question_id, a.selected_choice_id, a.is_correct, a.points_awarded, c.choice_id AS correct_choice_id
+      FROM quiz_answers a LEFT JOIN quiz_choices c
+        ON c.question_id = a.question_id AND c.status = 'published' AND c.is_correct = 1
+      WHERE a.attempt_id = ? ORDER BY a.question_id`, [params.id]);
   }
   return { data };
 }
 
 export async function submitAttempt(req, { params, body }) {
   return { data: await transaction(req.db, async db => {
-    const attempt = requireRow(await ownedAttempt(db, req.user.user_id, params.id, 'FOR UPDATE'));
+    const attempt = requireRow(await ownedAttempt(db, req.user.user_id, params.id, 'FOR UPDATE OF a'));
     if (attempt.submitted_at) conflict('Attempt is already submitted.');
     const [rows] = await db.execute(`
       SELECT q.question_id, q.points, c.choice_id, c.is_correct
-      FROM quiz_questions q LEFT JOIN quiz_choices c USING (question_id)
-      WHERE q.quiz_id = ? ORDER BY q.question_id`, [attempt.quiz_id]);
+      ${publishedQuestions} ORDER BY q.question_id`, [attempt.quiz_id]);
     const grouped = new Map();
     for (const row of rows) {
       if (!grouped.has(row.question_id)) grouped.set(row.question_id, { points: cents(row.points), choices: new Map() });

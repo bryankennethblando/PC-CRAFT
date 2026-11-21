@@ -3,7 +3,13 @@ import { parseEnv } from 'node:util';
 import mysql from 'mysql2/promise';
 
 export function loadConfig(file = new URL('../../.env', import.meta.url)) {
-  const env = parseEnv(readFileSync(file, 'utf8'));
+  let fileEnv;
+  try {
+    fileEnv = parseEnv(readFileSync(file, 'utf8'));
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  const env = { ...fileEnv, ...process.env };
   function port(name) {
     const value = env[name];
     if (!/^\d+$/.test(value ?? '') || Number(value) < 1 || Number(value) > 65535) {
@@ -20,6 +26,7 @@ export function loadConfig(file = new URL('../../.env', import.meta.url)) {
     throw new Error('Set FRONTEND_ORIGIN to an HTTP(S) origin with no trailing slash in .env');
   }
   return {
+    host: env.HOST || '127.0.0.1',
     port: port('PORT'),
     origin: origin.origin,
     database: {

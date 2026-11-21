@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { one, transaction } from '../config/db.js';
-import { byId, endpoint, log, object, page, pagination, requireRow, text } from '../http.js';
+import { byId, contentStatus, endpoint, log, object, page, pagination, requireRow, text } from '../http.js';
 import { admin, superAdmin } from '../middleware/role.middleware.js';
 import { changeStatus, content, createContent, editContent, newContentBody, presence, readContent } from '../controllers/admin.controller.js';
 
@@ -13,7 +13,8 @@ router.get('/dashboard', endpoint({}, async req => ({
     SELECT (SELECT COUNT(*) FROM users WHERE role = 'learner') AS learners,
       (SELECT COUNT(*) FROM users u WHERE ${presence}) AS online_users,
       (SELECT COUNT(*) FROM modules WHERE status = 'published') AS published_modules,
-      (SELECT COUNT(*) FROM quizzes WHERE status = 'published') AS published_quizzes,
+      (SELECT COUNT(*) FROM quizzes q JOIN modules m USING (module_id)
+        WHERE q.status = 'published' AND m.status = 'published') AS published_quizzes,
       (SELECT COUNT(*) FROM quiz_attempts WHERE submitted_at IS NOT NULL) AS submitted_quiz_attempts,
       (SELECT COUNT(*) FROM assembly_attempts WHERE status = 'completed') AS completed_assembly_attempts,
       (SELECT COUNT(*) FROM troubleshooting_attempts WHERE status = 'completed') AS completed_troubleshooting_attempts`),
@@ -47,7 +48,7 @@ for (const [name, spec] of Object.entries(content)) {
   router.post(path, endpoint({ body: newContentBody(spec), status: 201 }, createContent(spec)));
   router.put(`${path}/:id`, endpoint({ params: byId, body: object(spec.shape) }, editContent(spec)));
   router.patch(`${path}/:id/status`, endpoint({
-    params: byId, body: object({ status: z.enum(['published', 'archived']) }),
+    params: byId, body: object({ status: name === 'scenarios' ? z.enum(['published', 'archived']) : contentStatus }),
   }, changeStatus(spec)));
 }
 

@@ -1,6 +1,5 @@
 .env
 .env.*
 !.env.example
-client/assets/model
 
 node_modules/

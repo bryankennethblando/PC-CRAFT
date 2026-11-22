@@ -1,12 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react"
-import {
-  Bell,
-  BookOpen,
-  ChevronDown,
-  Cpu,
-  LogOut,
-  Stethoscope,
-} from "lucide-react"
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react"
+import { Bell, BookOpen, ChevronDown, LogOut, Stethoscope } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Admin } from "./Admin"
 import { api, getToken, message, setToken, useResource, type User } from "./api"
@@ -16,6 +9,8 @@ import { AuthPage, Landing } from "./Public"
 import { Quizzes } from "./Quizzes"
 import { Brand, Heading, LinkButton, Status } from "./ui"
 import "./site.css"
+
+const AssemblyLab = lazy(() => import("./AssemblyLab"))
 
 const learnerLinks = [
   ["/dashboard", "Overview"],
@@ -48,7 +43,6 @@ export default function App() {
   const user = signedIn ?? (token ? (profile.data ?? null) : null)
   const [page, tab, id, ...extra] = route.slice(1).split("/")
   const admin = Boolean(user && user.role !== "learner")
-  const labs = page === "simulation" || page === "troubleshooting"
   const valid =
     extra.length === 0 &&
     (page === "dashboard"
@@ -179,16 +173,31 @@ export default function App() {
         <LinkButton to={home}>Return to dashboard</LinkButton>
       </main>
     )
-  else if (labs) {
-    const Icon = page === "simulation" ? Cpu : Stethoscope
-    const title = page === "simulation" ? "Assembly lab" : "Troubleshooting lab"
+  else if (page === "simulation") {
+    content = (
+      <Suspense
+        fallback={
+          <main id="main" tabIndex={-1} className="wrap workspace">
+            <Status loading />
+          </main>
+        }
+      >
+        <AssemblyLab
+          key={user?.user_id ?? "guest"}
+          userId={user?.user_id ?? "guest"}
+        />
+      </Suspense>
+    )
+  } else if (page === "troubleshooting") {
     content = (
       <main id="main" tabIndex={-1} className="wrap workspace">
         <section className="panel stack">
           <span className="icon-box">
-            <Icon aria-hidden="true" />
+            <Stethoscope aria-hidden="true" />
           </span>
-          <Heading title={title}>This lab is under development.</Heading>
+          <Heading title="Troubleshooting lab">
+            This lab is under development.
+          </Heading>
           <div>
             <LinkButton to="#/modules" variant="outline">
               Browse learning modules

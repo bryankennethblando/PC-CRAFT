@@ -1,0 +1,122 @@
+{
+  "01": {
+    "summary": "Identify workshop hazards, prevent electrostatic damage, and handle tools and cleaning supplies safely.",
+    "questions": [
+      {
+        "prompt": "You are laying out a shared repair bench. Where should its power strip cable run?",
+        "choices": ["Across the main walkway", "Along the wall, clear of foot traffic", "Across the front edge of the work surface"],
+        "answer": 1
+      },
+      {
+        "prompt": "Your work area is carpeted and you need to unpack a motherboard. What is the best setup?",
+        "choices": ["Place the board on a fleece blanket", "Unpack the board on the carpet", "Move to a grounded ESD work surface before unbagging it"],
+        "answer": 2
+      },
+      {
+        "prompt": "The CPU heat spreader is still wet after cleaning. What should you do before proceeding?",
+        "choices": ["Let the cleaning alcohol evaporate completely", "Apply thermal paste over the remaining liquid", "Install the cooler and power on to dry it"],
+        "answer": 0
+      }
+    ]
+  },
+  "02": {
+    "summary": "Explore computer architecture, CPU sockets, memory, storage, and power delivery.",
+    "questions": [
+      {
+        "prompt": "What stage of information processing begins when the computer receives a keystroke?",
+        "choices": ["Storage", "Output", "Input"],
+        "answer": 2
+      },
+      {
+        "prompt": "Before buying a replacement CPU, which reference best verifies it can run on a particular motherboard?",
+        "choices": ["The monitor's product manual", "The motherboard's CPU support list and required BIOS versions", "The case's maximum graphics card length"],
+        "answer": 1
+      },
+      {
+        "prompt": "A 2.5-inch SATA SSD is mounted inside a desktop. What connections does it ordinarily need?",
+        "choices": ["A SATA data cable and a SATA power cable", "A SATA data cable only", "An EPS CPU power cable and a USB data cable"],
+        "answer": 0
+      }
+    ]
+  },
+  "03": {
+    "summary": "Prepare a chassis, install components, route power and data cables, and verify the build before starting it.",
+    "questions": [
+      {
+        "prompt": "You are preparing to mount the motherboard. Where should each standoff line up?",
+        "choices": ["Under any open spot on the motherboard", "Under a hole where the board will be secured with a screw", "Under a rear port to support the connector"],
+        "answer": 1
+      },
+      {
+        "prompt": "The marking on the CPU is a small triangle. What should you align it with during installation?",
+        "choices": ["The triangle or orientation mark on the socket", "The closest memory slot latch", "The CPU cooler fan header"],
+        "answer": 0
+      },
+      {
+        "prompt": "A cable crosses a case fan's blade path before the first boot. What should you do?",
+        "choices": ["Boot briefly to see whether the blades clear it", "Disconnect the fan and leave the cable in place", "Reroute and secure the cable away from the blades before powering on"],
+        "answer": 2
+      }
+    ]
+  },
+  "04": {
+    "summary": "Navigate firmware settings, choose a boot mode and partition scheme, and deploy an operating system and drivers.",
+    "questions": [
+      {
+        "prompt": "A freshly installed SSD is absent in firmware setup. What should you check before starting an OS installation?",
+        "choices": ["Whether the drive is seated and the motherboard supports its interface", "Whether the desktop wallpaper has loaded", "Whether the installed OS has the latest browser"],
+        "answer": 0
+      },
+      {
+        "prompt": "You want to run a virtual machine, but its software reports that hardware virtualization is disabled. Which setting should you check?",
+        "choices": ["Storage boot order", "CPU fan curve", "Intel VT-x or AMD SVM in firmware setup"],
+        "answer": 2
+      },
+      {
+        "prompt": "You need to boot a USB installer once while keeping the internal drive first in the normal boot order. Which control fits?",
+        "choices": ["The RAM overclocking profile", "The firmware's one-time boot menu", "The permanent boot priority list"],
+        "answer": 1
+      }
+    ]
+  },
+  "05": {
+    "summary": "Identify network devices and cabling, configure IPv4, and diagnose connectivity.",
+    "questions": [
+      {
+        "prompt": "On a small LAN, which device normally forwards traffic from the local network to another IP network?",
+        "choices": ["A patch panel", "A router", "An unmanaged Ethernet switch"],
+        "answer": 1
+      },
+      {
+        "prompt": "You want a standard straight-through patch cable using T568B. Which termination should you use?",
+        "choices": ["T568A at one end and T568B at the other", "T568B at the first end and reversed pin order at the other", "T568B at both ends"],
+        "answer": 2
+      },
+      {
+        "prompt": "A PC can reach other devices on its subnet by IP but needs a route to an external network. Which IPv4 setting identifies its usual next hop?",
+        "choices": ["Default gateway", "DNS server", "Subnet mask"],
+        "answer": 0
+      }
+    ]
+  },
+  "06": {
+    "summary": "Practice preventive maintenance and isolate hardware, peripheral, and operating system faults.",
+    "questions": [
+      {
+        "prompt": "Before opening a dusty desktop for preventive maintenance, what is the appropriate first action?",
+        "choices": ["Run a CPU stress test while removing the panels", "Switch the fans to maximum speed", "Shut down and disconnect AC power"],
+        "answer": 2
+      },
+      {
+        "prompt": "After one repair restores normal operation, what information makes that repair reproducible?",
+        "choices": ["The symptoms, the change made, and how normal operation was verified", "The time of day only", "A list of parts you might replace someday"],
+        "answer": 0
+      },
+      {
+        "prompt": "After a graphics driver update, Windows reaches Safe Mode but fails during a normal boot. What should you test first?",
+        "choices": ["Replace both memory modules", "Roll back the recent graphics driver in Safe Mode and retest", "Repartition the system drive immediately"],
+        "answer": 1
+      }
+    ]
+  }
+}

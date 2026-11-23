@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react"
-import { Bell, BookOpen, ChevronDown, LogOut, Stethoscope } from "lucide-react"
+import { Bell, BookOpen, ChevronDown, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Admin } from "./Admin"
 import { api, getToken, message, setToken, useResource, type User } from "./api"
@@ -173,7 +173,7 @@ export default function App() {
         <LinkButton to={home}>Return to dashboard</LinkButton>
       </main>
     )
-  else if (page === "simulation") {
+  else if (page === "simulation" || page === "troubleshooting") {
     content = (
       <Suspense
         fallback={
@@ -183,28 +183,11 @@ export default function App() {
         }
       >
         <AssemblyLab
-          key={user?.user_id ?? "guest"}
+          key={page + ":" + (user?.user_id ?? "guest")}
           userId={user?.user_id ?? "guest"}
+          troubleshooting={page === "troubleshooting"}
         />
       </Suspense>
-    )
-  } else if (page === "troubleshooting") {
-    content = (
-      <main id="main" tabIndex={-1} className="wrap workspace">
-        <section className="panel stack">
-          <span className="icon-box">
-            <Stethoscope aria-hidden="true" />
-          </span>
-          <Heading title="Troubleshooting lab">
-            This lab is under development.
-          </Heading>
-          <div>
-            <LinkButton to="#/modules" variant="outline">
-              Browse learning modules
-            </LinkButton>
-          </div>
-        </section>
-      </main>
     )
   } else if (page === "login" || page === "register") {
     content = user ? (

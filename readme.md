@@ -22,7 +22,7 @@ The system features real-time 3D rendering with component snapping, collision de
   * **OrbitControls**: Smooth camera orbit, panning, zooming, and focal framing.
   * **GLTFLoader / DRACOLoader**: Optimized loading of 3D computer component models (`.glb` / `.gltf`).
   * **Raycasting & Collision Detection**: Interactive component picking, target slot highlight, socket compatibility check, and snap-to-place assembly.
-* **Architecture**: The React UI lives in `client/frontend` and uses the Express REST API. Lab integration is pending.
+* **Architecture**: React UI and Three.js assembly lab live in `client/frontend`; the UI calls the Express REST API through `src/api.ts`.
 
 ### **Backend (Server)**
 * **Runtime**: **Node.js** (v22+).
@@ -31,12 +31,7 @@ The system features real-time 3D rendering with component snapping, collision de
   * **Bearer sessions**: Expiring sessions with token digests stored in MySQL.
   * **scrypt**: Salted password hashing.
   * **CORS & Helmet**: Security headers and cross-origin resource control.
-* **Architecture**: Layered MVC pattern:
-  * `routes/`: Express endpoint routing.
-  * `controllers/`: Business logic and request/response orchestration.
-  * `models/`: Database entity definitions and queries.
-  * `middleware/`: Auth verification, Role-Based Access Control (RBAC), and centralized error handling.
-  * `services/`: Reusable utility functions (scoring, logging, compatibility algorithms).
+* **Architecture**: Express routes mount API controllers; shared middleware handles bearer-session authentication, role checks, and errors. Controllers use SQL models and the MySQL connection pool. The implementation is in `server/routes/`, `server/controllers/`, `server/models/`, `server/middleware/`, and `server/config/`.
 
 ### **Database & Storage**
 * **Database Engine**: **MySQL**.
@@ -63,19 +58,17 @@ The system features real-time 3D rendering with component snapping, collision de
 flowchart TD
     subgraph Client["Frontend Client (Browser)"]
         UI["React UI"]
-        ThreeScene["Three.js 3D Engine (scene.js, assembly.js)"]
-        TroubleshootLogic["Troubleshooting Engine (faults.js)"]
-        APIClient["React API client"]
+        Lab["Three.js assembly and troubleshooting"]
+        APIClient["src/api.ts"]
         UI --> APIClient
-        ThreeScene --> APIClient
-        TroubleshootLogic --> APIClient
+        Lab --> APIClient
     end
 
     subgraph Server["Backend Server (Node.js & Express)"]
-        Router["Express Router (/api)"]
-        AuthMid["Auth & RBAC Middleware"]
-        Controllers["Controllers (Auth, Quiz, Simulation, Admin)"]
-        Models["Data Models (User, Progress, Scenario, Quiz)"]
+        Router["Express routes (/api)"]
+        AuthMid["Session, role and error middleware"]
+        Controllers["Request and domain logic"]
+        Models["SQL models"]
         
         Router --> AuthMid --> Controllers --> Models
     end
@@ -87,6 +80,12 @@ flowchart TD
 
     APIClient <-->|REST API / JSON| Router
 ```
+
+The frontend is served by Nginx in Compose, which proxies `/api` to Express.
+The API enforces authentication, role access, and ownership before SQL models
+read or write MySQL. Build state and troubleshooting configuration are stored
+as validated JSON alongside relational attempt records. Session tokens are
+stored as hashes in `user_sessions`.
 
 ---
 
@@ -192,19 +191,53 @@ pc-craft/
 
 ---
 
-## 🔑 Data Models & Entities
+## 🔑 Data Model and ERD
+
+This ERD summarizes the implemented MySQL relationships. The authoritative
+schema is [`database/schema.sql`](database/schema.sql), together with the
+numbered migrations.
+
+```mermaid
+erDiagram
+    USERS ||--o{ USER_SESSIONS : authenticates
+    USERS ||--o{ MODULES : creates
+    MODULES ||--o{ LESSONS : contains
+    USERS ||--o{ LESSON_PROGRESS : tracks
+    LESSONS ||--o{ LESSON_PROGRESS : records
+    MODULES ||--o{ QUIZZES : groups
+    USERS ||--o{ QUIZZES : creates
+    QUIZZES ||--o{ QUIZ_QUESTIONS : contains
+    QUIZ_QUESTIONS ||--o{ QUIZ_CHOICES : offers
+    USERS ||--o{ QUIZ_ATTEMPTS : takes
+    QUIZZES ||--o{ QUIZ_ATTEMPTS : receives
+    QUIZ_ATTEMPTS ||--o{ QUIZ_ANSWERS : records
+    QUIZ_QUESTIONS ||--o{ QUIZ_ANSWERS : answered
+    QUIZ_CHOICES o|--o{ QUIZ_ANSWERS : selected
+    USERS ||--o{ SIMULATION_SCENARIOS : creates
+    SIMULATION_SCENARIOS ||--o{ SCENARIO_STEPS : defines
+    USERS ||--o{ TROUBLESHOOTING_ATTEMPTS : takes
+    SIMULATION_SCENARIOS ||--o{ TROUBLESHOOTING_ATTEMPTS : guides
+    TROUBLESHOOTING_ATTEMPTS ||--o{ TROUBLESHOOTING_RESPONSES : records
+    SCENARIO_STEPS ||--o{ TROUBLESHOOTING_RESPONSES : answered
+    USERS ||--o{ ASSEMBLY_ATTEMPTS : builds
+    USERS ||--o{ SYSTEM_FEEDBACK : submits
+    USERS o|--o{ SYSTEM_FEEDBACK : reviews
+    USERS o|--o{ SYSTEM_LOGS : acts
+```
 
 | Model | Description |
 | :--- | :--- |
-| **User** | User profile, authentication credentials, and role (`student`, `instructor`, `admin`). |
-| **Module** | Educational units covering PC hardware components, safety, and assembly procedures. |
-| **Quiz** | Assessment sets associated with educational modules. |
-| **Choice** | Options and correct answer flags for quiz questions. |
-| **SimulationScenario** | Predefined 3D assembly or troubleshooting challenge states. |
-| **SimulationAttempt** | Logged student assembly/troubleshooting sessions, duration, and score. |
-| **Progress** | Overall module completion, quiz results, and mastery percentage per student. |
-| **SystemFeedback** | User-submitted ratings, suggestions, and issue reports. |
-| **SystemLog** | Audit log tracking logins, administrative actions, and system errors. |
+| Entity | Relationships and purpose |
+| :--- | :--- |
+| `users`, `user_sessions` | Learner/admin accounts and expiring, revocable sessions. Roles are `learner`, `admin`, and `super_admin`. |
+| `modules`, `lessons`, `lesson_progress` | Learning content and per-user lesson completion state. |
+| `quizzes`, `quiz_questions`, `quiz_choices` | Module-linked single-choice assessments and options. |
+| `quiz_attempts`, `quiz_answers` | Per-user attempts, selected choices, grading, and scores. |
+| `simulation_scenarios`, `scenario_steps` | Troubleshooting or maintenance scenarios and ordered prompts/actions. |
+| `troubleshooting_attempts`, `troubleshooting_responses` | Scenario runs and responses associated with steps. |
+| `assembly_attempts` | Assembly/disassembly build state and compatibility result. |
+| `system_feedback` | User feedback and optional admin review. |
+| `system_logs` | Actor-linked or system-level audit events. |
 
 ---
 

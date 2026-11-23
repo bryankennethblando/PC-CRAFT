@@ -3,6 +3,11 @@ import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import { OrbitControls } from "three/addons/controls/OrbitControls.js"
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js"
+import { createCableManager } from "./cables"
+import { createDisplay } from "./display"
+import { createCoolingRepair, type CoolingView } from "./coolingRepair"
+import { cablesForView, type CableSettings } from "./cableConfig"
+import type { DisplayState } from "./troubleshooting"
 import {
   tray,
   type Build,
@@ -16,9 +21,15 @@ export type ViewState = {
   required?: PartId
   mode: Mode
   placed: Placements
+  wiring: CableSettings
+  selectedCable: string
+  diagnostic?: { part: PartId; label: string; fault: boolean; lift?: number }
+  display?: DisplayState
+  cooling?: CoolingView
 }
 type Events = {
   select: (id: PartId) => void
+  selectCable: (id: string) => void
   drop: (id: PartId, destination: string) => void
   progress: (label: string) => void
   ready: () => void
@@ -116,6 +127,10 @@ export function createScene(
     frame = 0,
     closed = false,
     ready = false
+  let cables: ReturnType<typeof createCableManager> | undefined
+  let display: ReturnType<typeof createDisplay> | undefined
+  let cooling: ReturnType<typeof createCoolingRepair> | undefined
+  let cableTap: { id: string; pid: number; x: number; y: number } | undefined
   let drag:
     | {
         id: PartId
@@ -129,13 +144,27 @@ export function createScene(
     | undefined
   function render() {
     if (!closed && !frame)
-      frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame((time) => {
         frame = 0
+        const animating = cooling?.animate(time)
         renderer.render(scene, camera)
-        targetLabel.hidden = !targetBox.visible
+        cables?.render(camera)
+        const cue = state.diagnostic
+        const marked = cue && pieces.get(cue.part)
+        targetLabel.hidden = !targetBox.visible && !marked
+        targetLabel.dataset.fault = String(Boolean(cue?.fault && marked))
         if (targetBox.visible) {
           targetBox.box.getCenter(point)
           point.y = targetBox.box.max.y
+        } else if (marked && cue) {
+          targetLabel.textContent = cue.label
+          point
+            .copy(marked.center)
+            .add(marked.root.position)
+            .sub(marked.original)
+          point.y += marked.bounds.max.y - marked.center.y
+        }
+        if (!targetLabel.hidden) {
           point.project(camera)
           targetLabel.hidden =
             Math.abs(point.x) > 1 ||
@@ -144,11 +173,12 @@ export function createScene(
           targetLabel.style.left = (point.x + 1) * 50 + "%"
           targetLabel.style.top = (1 - point.y) * 50 + "%"
         }
+        if (animating) render()
       })
   }
-  function aim(center: T.Vector3, distance: number) {
+  function aim(center: T.Vector3, distance: number, direction = facing) {
     controls.target.copy(center)
-    camera.position.copy(facing).multiplyScalar(distance).add(center)
+    camera.position.copy(direction).multiplyScalar(distance).add(center)
     controls.update()
     render()
   }
@@ -165,6 +195,7 @@ export function createScene(
       const installed = id === "case" || Boolean(state.placed[id])
       piece.root.visible =
         installed ||
+        (id === "cpu_cooler" && Boolean(state.cooling?.removed)) ||
         id === state.selected ||
         (id === state.required && state.selected === "case")
       if (drag?.id !== id) {
@@ -172,8 +203,13 @@ export function createScene(
           .copy(piece.original)
           .sub(piece.center)
           .add(installed ? piece.target : trayCenter)
+        if (state.diagnostic?.part === id && state.diagnostic.lift)
+          piece.root.position.addScaledVector(
+            facing,
+            height * state.diagnostic.lift
+          )
       }
-      if (id === state.selected && piece.root.visible) {
+      if (id === state.selected && !state.selectedCable && piece.root.visible) {
         selectedBox.box
           .copy(piece.bounds)
           .translate(point.copy(piece.root.position).sub(piece.original))
@@ -188,6 +224,11 @@ export function createScene(
           state.mode === "assembly" ? build.targets[id]!.label : "Parts tray"
       }
     }
+    cables?.sync(state)
+    if (state.display) display?.sync(state.display)
+    const cooler = pieces.get("cpu_cooler")
+    if (state.cooling && cooler)
+      cooling?.sync(state.cooling, cooler.root.position, cooler.original)
     render()
   }
   function resize() {
@@ -215,8 +256,10 @@ export function createScene(
   canvas.addEventListener(
     "pointerdown",
     (e) => {
+      cableTap = undefined
       if (
         e.button !== 0 ||
+        !e.isPrimary ||
         !ready ||
         drag ||
         e.shiftKey ||
@@ -229,8 +272,16 @@ export function createScene(
         .filter((p) => p.root.visible)
         .flatMap((p) => p.meshes)
       const hit = ray.intersectObjects(meshes, false)[0]
-      if (!hit) return
-      const id = owners.get(hit.object)!
+      const id = hit && owners.get(hit.object)
+      const cable =
+        id && id === state.required && id !== "case"
+          ? undefined
+          : cables?.pick(ray, hit?.distance ?? Infinity)
+      if (cable) {
+        cableTap = { id: cable, pid: e.pointerId, x: e.clientX, y: e.clientY }
+        return
+      }
+      if (!id) return
       events.select(id)
       if (id === "case" || !state.required) return
       const piece = pieces.get(id)!
@@ -261,6 +312,11 @@ export function createScene(
   canvas.addEventListener(
     "pointermove",
     (e) => {
+      if (
+        cableTap?.pid === e.pointerId &&
+        Math.hypot(e.clientX - cableTap.x, e.clientY - cableTap.y) >= 5
+      )
+        cableTap = undefined
       if (!drag || drag.pid !== e.pointerId) return
       if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 4)
         return
@@ -276,11 +332,20 @@ export function createScene(
       selectedBox.box
         .copy(piece.bounds)
         .translate(point.copy(piece.root.position).sub(piece.original))
+      cables?.sync(state)
       render()
     },
     options
   )
   function endDrag(e: PointerEvent) {
+    if (cableTap?.pid === e.pointerId) {
+      if (
+        e.type === "pointerup" &&
+        Math.hypot(e.clientX - cableTap.x, e.clientY - cableTap.y) < 5
+      )
+        events.selectCable(cableTap.id)
+      cableTap = undefined
+    }
     if (!drag || drag.pid !== e.pointerId) return
     const { id, moved } = drag
     drag = undefined
@@ -365,11 +430,28 @@ export function createScene(
         }
         const chassis = pieces.get("case")!
         height = chassis.bounds.max.y - chassis.bounds.min.y
+        if (state.cooling)
+          cooling = createCoolingRepair(
+            scene,
+            pieces.get("cpu_cooler")!.bounds,
+            pieces.get("cpu")!.bounds
+          )
+        cables = createCableManager(
+          scene,
+          host,
+          cablesForView(build.id, Boolean(state.display)),
+          pieces,
+          height
+        )
+        if (state.display)
+          display = createDisplay(scene, chassis.bounds, height)
         const right = new T.Vector3()
           .crossVectors(camera.up, facing)
           .normalize()
         trayCenter.copy(chassis.center).addScaledVector(right, -0.85 * height)
-        home.copy(chassis.center).addScaledVector(right, -0.25 * height)
+        home
+          .copy(chassis.center)
+          .addScaledVector(right, (display ? 0.22 : -0.25) * height)
         controls.minDistance = height * 0.08
         controls.maxDistance = height * 8
         camera.near = height * 0.002
@@ -412,6 +494,26 @@ export function createScene(
   return {
     sync,
     resetCamera,
+    inspectDisplay() {
+      if (display)
+        aim(
+          display.center,
+          height * Math.max(2.4, 1.75 / camera.aspect),
+          new T.Vector3(-0.83, 0.22, 0.95).normalize()
+        )
+    },
+    inspectCable(id: string) {
+      const cable = cables?.inspect(id)
+      if (!cable) return
+      const direction = cable.outside
+        ? facing.clone().addScaledVector(cable.outside, 1.6).normalize()
+        : facing
+      aim(
+        cable.center,
+        cable.distance * Math.max(1, 1 / camera.aspect),
+        direction
+      )
+    },
     zoom(factor: number) {
       const offset = camera.position.clone().sub(controls.target)
       offset.setLength(
@@ -424,8 +526,8 @@ export function createScene(
       camera.position.copy(controls.target).add(offset)
       controls.update()
     },
-    inspect() {
-      const piece = pieces.get(state.selected)
+    inspect(part = state.selected) {
+      const piece = pieces.get(part)
       if (!piece) return
       const center = piece.center
         .clone()
@@ -444,6 +546,7 @@ export function createScene(
       cancelAnimationFrame(frame)
       observer.disconnect()
       controls.dispose()
+      cables?.disposeLabels()
       release(scene)
       environment.dispose()
       renderer.dispose()

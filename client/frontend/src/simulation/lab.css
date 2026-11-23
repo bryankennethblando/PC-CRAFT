@@ -54,6 +54,11 @@
 .lab-feedback { color: var(--link); }
 .lab-feedback.invalid { color: var(--destructive); }
 .lab-feedback:empty { display: none; }
+.lab-anchor[data-fault="true"] { background: #914a0d; }
+.lab-guide { grid-template-columns: minmax(0, 1fr); }
+.lab-guide button { white-space: normal; height: auto; min-height: 2rem; text-align: left; justify-content: flex-start; }
+.lab-phases { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: .76rem; color: var(--muted-foreground); }
+.lab-phases [aria-current="step"] { font-weight: 700; color: var(--link); }
 .lab-report summary { cursor: pointer; font-weight: 650; }
 .lab-report ul { list-style: disc; padding-left: 16px; margin: 8px 0; }
 @media (max-width: 880px) {

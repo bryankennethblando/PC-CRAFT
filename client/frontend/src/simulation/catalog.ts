@@ -234,12 +234,13 @@ const specs = {
   boardMemory: "DDR4",
   memory: "DDR4",
 }
+const modelPath = `${import.meta.env?.BASE_URL ?? "/"}assets/models/`
 export const builds: Record<BuildId, Build> = {
   basic: {
     id: "basic",
     name: "Basic Build",
-    url: "/assets/models/basic_build.glb",
-    bytes: 80957692,
+    url: modelPath + "basic_build_optimized.glb",
+    bytes: 22598972,
     view: [0.34, 0.22, 1],
     order: partIds.filter((id) => id !== "ssd"),
     targets: basic,
@@ -252,8 +253,8 @@ export const builds: Record<BuildId, Build> = {
   advanced: {
     id: "advanced",
     name: "Advanced Build",
-    url: "/assets/models/advanced_build.glb",
-    bytes: 85015948,
+    url: modelPath + "advanced_build_optimized.glb",
+    bytes: 25927436,
     view: [-1, 0.22, 0.34],
     order: partIds,
     targets: advanced,

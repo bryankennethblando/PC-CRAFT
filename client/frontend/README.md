@@ -59,16 +59,16 @@ the target, and confirm. **Inspect part** fits the selected component in view.
 
 | Asset | Size | Component groups | Mesh definitions | Triangles¹ | Materials / textures |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Basic | 77.2 MiB | 9 | 258 | 1,164,953 | 63 / 26 |
-| Advanced | 81.1 MiB | 10 | 365 | 1,237,762 | 64 / 49 |
+| Basic | 21.6 MiB | 9 | 258 | 1,164,953 | 63 / 17 |
+| Advanced | 24.7 MiB | 10 | 365 | 1,237,762 | 64 / 38 |
 
 ¹ File totals count each mesh definition once, including unused scenery. Both
 GLBs import with nested meshes, offset pivots, and independent component
-roots. The exporter’s separate `Root` group is hidden. Public model URLs in
-`public/assets/models/` link to the original binaries in `client/assets/model/`.
-Vite copies their contents into the production build. Build cards and inventory
-tiles use small rendered WebP previews. Three.js and the selected GLB load when
-the workspace opens.
+roots. The exporter’s separate `Root` group is hidden. Vite copies the optimized
+GLBs from `public/assets/models/` and the local decoder files from `public/draco/`
+into the production build. The original binaries are in `client/assets/model/`.
+Build cards and inventory tiles use small rendered WebP previews. Three.js and
+the selected GLB load when the workspace opens.
 
 `src/simulation/catalog.ts` defines component IDs, example specifications,
 step order, and target centers in GLB scene coordinates. Each part keeps its

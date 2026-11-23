@@ -1,4 +1,5 @@
 import * as T from "three"
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import { OrbitControls } from "three/addons/controls/OrbitControls.js"
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js"
@@ -323,9 +324,14 @@ export function createScene(
     options
   )
 
-  new GLTFLoader(manager).load(
+  // Decoder requests can be shared across workspaces, so keep them off the abortable scene manager.
+  const draco = new DRACOLoader().setDecoderPath(
+    `${import.meta.env.BASE_URL}draco/`
+  )
+  new GLTFLoader(manager).setDRACOLoader(draco).load(
     build.url,
     (gltf) => {
+      draco.dispose()
       if (closed) {
         release(gltf.scene)
         return
@@ -395,6 +401,7 @@ export function createScene(
       )
     },
     () => {
+      draco.dispose()
       if (!closed)
         events.error(
           "Could not load the model. Check your connection and retry."

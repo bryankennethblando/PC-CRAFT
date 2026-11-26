@@ -371,6 +371,82 @@ export const coolerSteps = [
   },
 ] as const
 
+export const scenarioExplanations = {
+  "TS-001": {
+    cause:
+      "Dust blocked airflow through the CPU heatsink. Heat built up faster than the cooler could remove it, so thermal protection shut the PC down at 99°C.",
+    repair: [
+      "Isolate power, unplug the CPU_FAN lead, and remove the CPU cooler.",
+      "Clear the dust from the exposed heatsink fins.",
+      "Apply fresh thermal paste to the CPU before reinstalling the cooler.",
+      "Seat the cooler over the CPU and tighten its mount evenly.",
+      "Reconnect the fan lead to the CPU_FAN header before restoring power.",
+    ],
+    verification:
+      "Restore power, read the idle temperature, and repeat the same load test. Fan speed at idle alone cannot confirm that cooling works under load.",
+  },
+  "TS-002": {
+    cause:
+      "DIMM 2 was loose after the memory upgrade. The PC could power its fans, but it could not initialize memory, so POST stopped before the firmware screen appeared.",
+    repair: [
+      "Shut down and isolate power before touching the memory.",
+      "Release the retainer and lift DIMM 2 out of its slot.",
+      "Align the notch with the slot key and press the module down evenly until fully seated.",
+      "Confirm the retaining clip is closed before reconnecting power.",
+    ],
+    verification:
+      "Restore power and run POST. Check the DRAM indicator and the firmware display.",
+  },
+  "TS-003": {
+    cause:
+      "HDMI was connected to the motherboard video port. This CPU has no integrated graphics, so that port supplied no signal even though Windows had booted. The dedicated graphics card has the active output.",
+    repair: [
+      "Disconnect the PC end of the HDMI cable from the upper motherboard video port.",
+      "Seat the same cable in the lower dedicated GPU HDMI port. Keep the monitor on HDMI 1.",
+    ],
+    verification:
+      "Check the monitor for an HDMI signal and a visible Windows desktop. The startup chime already played before the repair.",
+  },
+  "TS-004": {
+    symptoms:
+      "After a PSU replacement, the fans twitch and the PC shuts off before POST begins.",
+    cause:
+      "The 8-pin EPS CPU power lead was unplugged. The CPU was missing its dedicated power connection even though the 24-pin main power lead and front-panel switch were connected.",
+    evidence: [
+      "The brief fan twitch confirms that pressing the power button starts the power-on sequence.",
+      "The EPS connection readout shows CPU_PWR is empty. The 24-pin ATX header is a separate connection and will not seat the EPS plug.",
+      "Check that 24-pin ATX main power and POWER SW are still seated. The Ethernet link check is separate from POST.",
+    ],
+    repair: [
+      "Shut down and unplug AC power.",
+      "Identify the EPS CPU power lead and the motherboard’s 8-pin CPU_PWR header.",
+      "Align and seat the EPS plug in CPU_PWR until the clip latches. Confirm the 24-pin ATX and POWER SW connections are still seated.",
+    ],
+    verification:
+      "Restore power and run POST verification. The system should stay powered and begin POST without cutting off.",
+  },
+  "TS-005": {
+    cause:
+      "The missing M.2 retention screw let the NVMe SSD rise out of its socket. Firmware could not detect the system drive, leaving it with no bootable entry.",
+    repair: [
+      "Shut down and isolate power before handling the SSD.",
+      "Align the NVMe SSD with its M.2 socket and insert it fully.",
+      "Lower the drive onto its standoff and secure it with the retention screw so it lies flat.",
+    ],
+    verification:
+      "Restore power, confirm the NVMe drive is listed in firmware, and boot to the OS desktop. A flat drive alone does not confirm detection.",
+  },
+} satisfies Record<
+  GuidedScenarioId | "TS-004",
+  {
+    symptoms?: string
+    cause: string
+    evidence?: string[]
+    repair: string[]
+    verification: string
+  }
+>
+
 export type GuideProgress = {
   stage: GuideStage
   evidence: number[]

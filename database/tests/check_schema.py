@@ -25,8 +25,9 @@ def sql(statement, error=None, database=DATABASE):
     return result.stdout.strip()
 
 
-migration, curriculum = (file.read_text() for file in sorted((ROOT / 'migrations').glob('*.sql')))
-assert migration + '\n' + curriculum == (ROOT / 'schema.sql').read_text(), 'Schema snapshot differs from migrations'
+migrations = [file.read_text() for file in sorted((ROOT / 'migrations').glob('*.sql'))]
+migration, curriculum, privacy = migrations
+assert '\n'.join(migrations) == (ROOT / 'schema.sql').read_text(), 'Schema snapshot differs from migrations'
 sql(f'CREATE DATABASE `{DATABASE}`', database=None)
 try:
     sql(migration)
@@ -42,6 +43,13 @@ try:
     sql(migration, 1050)  # Refuse reapplying the baseline.
     sql(curriculum)
     assert sql('SELECT version FROM schema_migrations ORDER BY version').splitlines() == ['001_initial', '002_curriculum']
+    sql(privacy)
+    assert sql('SELECT COUNT(*) FROM users') == '2'
+    assert sql('SELECT COUNT(*) FROM privacy_consents') == '0'
+    assert sql('SELECT version FROM schema_migrations ORDER BY version').splitlines()[-1] == '003_privacy_consent'
+    sql("INSERT INTO privacy_consents (user_id, notice_version) VALUES (1,'1'),(1,'2')")
+    sql("INSERT INTO privacy_consents (user_id, notice_version) VALUES (1,'2')", 1062)
+    sql("INSERT INTO privacy_consents (user_id, notice_version) VALUES (999,'1')", 1452)
     assert sql('SELECT status FROM quiz_questions WHERE question_id=1') == 'published'
     assert sql('SELECT status FROM quiz_choices WHERE choice_id=1') == 'published'
     assert sql('SELECT COUNT(*) FROM quiz_attempts WHERE attempt_id=1') == '1'

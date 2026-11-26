@@ -9,7 +9,14 @@ import {
   Stethoscope,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { api, message, setToken, type User } from "./api"
+import {
+  api,
+  message,
+  setToken,
+  useResource,
+  type PrivacyNotice,
+  type User,
+} from "./api"
 import { Heading, installation, LinkButton, Status, workbench } from "./ui"
 
 const areas = [
@@ -50,8 +57,8 @@ const areas = [
 const highlights = [
   { number: "01", label: "Connected learning journey", link: "#/modules" },
   { number: "04", label: "Ways to learn", link: "#/modules" },
-  { number: "12", label: "CSS learning modules", link: "#/modules" },
-  { number: "08", label: "Guided lab scenarios", link: "#/simulation" },
+  { number: "06", label: "CSS learning modules", link: "#/modules" },
+  { number: "05", label: "Guided lab scenarios", link: "#/simulation" },
 ]
 
 export function Landing({ user }: { user: User | null }) {
@@ -178,6 +185,28 @@ export function Landing({ user }: { user: User | null }) {
   )
 }
 
+export function HelpCenter() {
+  return (
+    <main id="main" tabIndex={-1} className="wrap workspace">
+      <Heading title="Help center" />
+      <div className="panel stack">
+        <p>
+          <a href="#/modules">Explore modules</a> to find lessons on PC hardware
+          and servicing.
+        </p>
+        <p>
+          <a href="#/simulation">Open the assembly lab</a> to choose a build and
+          practice assembly or disassembly.
+        </p>
+        <p>
+          <a href="#/troubleshooting">Open the troubleshooting lab</a> to
+          practice diagnosing and repairing a fault.
+        </p>
+      </div>
+    </main>
+  )
+}
+
 export function AuthPage({
   register,
   onLogin,
@@ -188,10 +217,14 @@ export function AuthPage({
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
   const [registered, setRegistered] = useState(false)
+  const notice = useResource<PrivacyNotice>(
+    register && !registered ? "/auth/privacy" : null
+  )
   const [visible, setVisible] = useState(false)
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
+    if (register && (!notice.data || !form.has("privacy_accepted"))) return
     const email = String(form.get("email")).trim()
     const password = String(form.get("password"))
     setPending(true)
@@ -203,6 +236,8 @@ export function AuthPage({
           password,
           first_name: String(form.get("first_name")).trim(),
           last_name: String(form.get("last_name")).trim(),
+          privacy_accepted: form.has("privacy_accepted"),
+          privacy_notice_version: notice.data?.version,
         })
         setRegistered(true)
       } else {
@@ -216,6 +251,7 @@ export function AuthPage({
       }
     } catch (error) {
       setError(message(error))
+      if (register) notice.reload()
     } finally {
       setPending(false)
     }
@@ -320,8 +356,38 @@ export function AuthPage({
                   <input type="checkbox" name="remember" /> Remember me
                 </label>
               )}
+              {register && (
+                <>
+                  <Status {...notice} />
+                  <label className="check privacy-check">
+                    <input
+                      key={notice.data?.version}
+                      type="checkbox"
+                      name="privacy_accepted"
+                      required
+                      disabled={!notice.data}
+                    />
+                    <span>
+                      I have read the{" "}
+                      <a
+                        href="#/privacy"
+                        target="_blank"
+                        rel="noopener"
+                        aria-label="Privacy Notice (opens in a new tab)"
+                      >
+                        Privacy Notice
+                      </a>{" "}
+                      and agree to the data use it describes.
+                    </span>
+                  </label>
+                </>
+              )}
               <Status error={error} />
-              <Button type="submit" size="lg" disabled={pending}>
+              <Button
+                type="submit"
+                size="lg"
+                disabled={pending || (register && !notice.data)}
+              >
                 {pending
                   ? "Please wait…"
                   : register

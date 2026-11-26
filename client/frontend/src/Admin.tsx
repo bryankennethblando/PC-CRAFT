@@ -32,7 +32,7 @@ type ContentRow = {
     }[]
   }[]
 }
-type Account = User & {
+type Account = Omit<User, "privacy_accepted"> & {
   online: boolean
   account_status: string
   last_seen_at: string | null

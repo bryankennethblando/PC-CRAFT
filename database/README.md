@@ -70,6 +70,7 @@ in order, or apply `database/schema.sql` to perform the same setup in one step.
 mysql -u root -p -e 'CREATE DATABASE pc_craft_db CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;'
 mysql -u root -p pc_craft_db < database/migrations/001_initial.sql
 mysql -u root -p pc_craft_db < database/migrations/002_curriculum.sql
+mysql -u root -p pc_craft_db < database/migrations/003_privacy_consent.sql
 mysql -u root -p pc_craft_db -e 'SELECT * FROM schema_migrations;'
 ```
 
@@ -90,6 +91,12 @@ docker compose exec db mysql -u root -p pc_craft_db -e 'source /tmp/002_curricul
 
 MySQL DDL commits implicitly. On partial failure, inspect the created objects and
 repair forward before recording completion. There is no destructive down migration.
+Before upgrading an existing deployment to the privacy acknowledgment feature,
+apply migration `003_privacy_consent` after `002_curriculum`. It adds a separate
+table with an account, notice version, and server timestamp per acknowledgment.
+Existing accounts have no acknowledgment row and will be prompted. For an
+application rollback, retain this table so recorded acknowledgments survive.
+
 For an existing deployment, back up first and use a reviewed forward migration or
 restore procedure. Application accounts should not have DDL permission.
 

@@ -16,6 +16,8 @@ import {
   type Placements,
 } from "./catalog"
 
+export type ComponentAction = "connect" | "remove"
+
 export type ViewState = {
   selected: PartId
   required?: PartId
@@ -26,11 +28,14 @@ export type ViewState = {
   diagnostic?: { part: PartId; label: string; fault: boolean; lift?: number }
   display?: DisplayState
   cooling?: CoolingView
+  componentAction?: ComponentAction
+  connectTarget?: PartId
 }
 type Events = {
   select: (id: PartId) => void
   selectCable: (id: string) => void
   drop: (id: PartId, destination: string) => void
+  tap: (id?: PartId, target?: PartId) => void
   progress: (label: string) => void
   ready: () => void
   error: (message: string) => void
@@ -86,7 +91,11 @@ export function createScene(
   const targetLabel = document.createElement("span")
   targetLabel.className = "lab-anchor"
   targetLabel.hidden = true
-  host.append(canvas, targetLabel)
+  const targetButton = document.createElement("button")
+  targetButton.type = "button"
+  targetButton.className = "lab-anchor lab-connect-target"
+  targetButton.hidden = true
+  host.append(canvas, targetLabel, targetButton)
   const scene = new T.Scene()
   const camera = new T.PerspectiveCamera(37, 1, 0.001, 100)
   const controls = new OrbitControls(camera, canvas)
@@ -130,7 +139,14 @@ export function createScene(
   let cables: ReturnType<typeof createCableManager> | undefined
   let display: ReturnType<typeof createDisplay> | undefined
   let cooling: ReturnType<typeof createCoolingRepair> | undefined
-  let cableTap: { id: string; pid: number; x: number; y: number } | undefined
+  let tap:
+    | {
+        pid: number
+        x: number
+        y: number
+        activate: () => void
+      }
+    | undefined
   let drag:
     | {
         id: PartId
@@ -151,7 +167,9 @@ export function createScene(
         cables?.render(camera)
         const cue = state.diagnostic
         const marked = cue && pieces.get(cue.part)
-        targetLabel.hidden = !targetBox.visible && !marked
+        const activeTarget = Boolean(state.connectTarget && targetBox.visible)
+        targetButton.hidden = !activeTarget
+        targetLabel.hidden = activeTarget || (!targetBox.visible && !marked)
         targetLabel.dataset.fault = String(Boolean(cue?.fault && marked))
         if (targetBox.visible) {
           targetBox.box.getCenter(point)
@@ -164,14 +182,31 @@ export function createScene(
             .sub(marked.original)
           point.y += marked.bounds.max.y - marked.center.y
         }
-        if (!targetLabel.hidden) {
+        if (activeTarget || !targetLabel.hidden) {
           point.project(camera)
-          targetLabel.hidden =
+          const outside =
             Math.abs(point.x) > 1 ||
             Math.abs(point.y) > 1 ||
             Math.abs(point.z) > 1
-          targetLabel.style.left = (point.x + 1) * 50 + "%"
-          targetLabel.style.top = (1 - point.y) * 50 + "%"
+          if (activeTarget) {
+            const halfWidth = targetButton.offsetWidth / 2 + 4
+            targetButton.style.left = outside
+              ? "50%"
+              : T.MathUtils.clamp(
+                  ((point.x + 1) * host.clientWidth) / 2,
+                  halfWidth,
+                  host.clientWidth - halfWidth
+                ) + "px"
+            targetButton.style.top =
+              Math.max(
+                targetButton.offsetHeight + 6,
+                outside ? 0 : ((1 - point.y) * host.clientHeight) / 2
+              ) + "px"
+          } else {
+            targetLabel.hidden = outside
+            targetLabel.style.left = (point.x + 1) * 50 + "%"
+            targetLabel.style.top = (1 - point.y) * 50 + "%"
+          }
         }
         if (animating) render()
       })
@@ -215,13 +250,23 @@ export function createScene(
           .translate(point.copy(piece.root.position).sub(piece.original))
         selectedBox.visible = true
       }
-      if (id === state.required && id !== "case") {
+      if (
+        id === state.connectTarget ||
+        (id === state.required && id !== "case")
+      ) {
+        const slot = build.targets[id]!
         targetBox.box
           .copy(piece.bounds)
-          .translate(point.copy(destination(id)).sub(piece.center))
+          .translate(
+            point
+              .copy(id === state.connectTarget ? piece.target : destination(id))
+              .sub(piece.center)
+          )
         targetBox.visible = true
-        targetLabel.textContent =
-          state.mode === "assembly" ? build.targets[id]!.label : "Parts tray"
+        if (id === state.connectTarget) targetButton.textContent = slot.label
+        else
+          targetLabel.textContent =
+            state.mode === "assembly" ? slot.label : "Parts tray"
       }
     }
     cables?.sync(state)
@@ -245,6 +290,13 @@ export function createScene(
   controls.addEventListener("change", render)
   const controller = new AbortController()
   const options = { capture: true, signal: controller.signal }
+  targetButton.addEventListener(
+    "click",
+    () => {
+      if (state.connectTarget) events.tap(undefined, state.connectTarget)
+    },
+    options
+  )
   function setRay(e: PointerEvent) {
     const rect = canvas.getBoundingClientRect()
     pointer.set(
@@ -256,7 +308,7 @@ export function createScene(
   canvas.addEventListener(
     "pointerdown",
     (e) => {
-      cableTap = undefined
+      tap = undefined
       if (
         e.button !== 0 ||
         !e.isPrimary ||
@@ -273,12 +325,36 @@ export function createScene(
         .flatMap((p) => p.meshes)
       const hit = ray.intersectObjects(meshes, false)[0]
       const id = hit && owners.get(hit.object)
+      const { componentAction, connectTarget } = state
+      if (componentAction) {
+        const target =
+          connectTarget &&
+          targetBox.visible &&
+          ray.ray.intersectsBox(targetBox.box)
+            ? connectTarget
+            : undefined
+        tap = {
+          pid: e.pointerId,
+          x: e.clientX,
+          y: e.clientY,
+          activate: () => {
+            if (state.componentAction === componentAction)
+              events.tap(id, target)
+          },
+        }
+        return
+      }
       const cable =
         id && id === state.required && id !== "case"
           ? undefined
           : cables?.pick(ray, hit?.distance ?? Infinity)
       if (cable) {
-        cableTap = { id: cable, pid: e.pointerId, x: e.clientX, y: e.clientY }
+        tap = {
+          pid: e.pointerId,
+          x: e.clientX,
+          y: e.clientY,
+          activate: () => events.selectCable(cable),
+        }
         return
       }
       if (!id) return
@@ -313,10 +389,10 @@ export function createScene(
     "pointermove",
     (e) => {
       if (
-        cableTap?.pid === e.pointerId &&
-        Math.hypot(e.clientX - cableTap.x, e.clientY - cableTap.y) >= 5
+        tap?.pid === e.pointerId &&
+        Math.hypot(e.clientX - tap.x, e.clientY - tap.y) >= 5
       )
-        cableTap = undefined
+        tap = undefined
       if (!drag || drag.pid !== e.pointerId) return
       if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 4)
         return
@@ -338,13 +414,13 @@ export function createScene(
     options
   )
   function endDrag(e: PointerEvent) {
-    if (cableTap?.pid === e.pointerId) {
+    if (tap?.pid === e.pointerId) {
       if (
         e.type === "pointerup" &&
-        Math.hypot(e.clientX - cableTap.x, e.clientY - cableTap.y) < 5
+        Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 5
       )
-        events.selectCable(cableTap.id)
-      cableTap = undefined
+        tap.activate()
+      tap = undefined
     }
     if (!drag || drag.pid !== e.pointerId) return
     const { id, moved } = drag
@@ -552,6 +628,7 @@ export function createScene(
       renderer.dispose()
       renderer.forceContextLoss()
       targetLabel.remove()
+      targetButton.remove()
       canvas.remove()
     },
   }

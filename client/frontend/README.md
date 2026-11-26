@@ -20,6 +20,7 @@ In production, serve that directory and forward `/api` to Express, or set
 | React route | Express API under `/api` |
 | --- | --- |
 | `#/`, `#/login`, `#/register` | `/auth/login`, `/auth/register`, `/auth/me`, `/auth/logout` |
+| `#/privacy` and the sign-in acknowledgment | `/auth/privacy`, `/auth/privacy/consent` |
 | `#/dashboard`, `#/progress` | `/progress`, `/progress/lessons`, `/quizzes/attempts`, `/feedback` |
 | `#/modules/:moduleId/:lessonId` | `/modules`, `/modules/:id/lessons`, `/modules/lessons/:id`, `/progress/lessons`, `/progress/lessons/:id`, `/quizzes?module_id=:moduleId` |
 | `#/quizzes/:quizId/:attemptId` | `/quizzes`, `/quizzes/:id`, `/quizzes/:id/attempts`, `/quizzes/attempts/:id`, `/quizzes/attempts/:id/submit` |

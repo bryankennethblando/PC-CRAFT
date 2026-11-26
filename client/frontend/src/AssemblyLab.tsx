@@ -51,9 +51,14 @@ import {
   type CableSettings,
   type EthernetEnd,
 } from "./simulation/cableConfig"
-import type { createScene, ViewState } from "./simulation/scene"
+import type {
+  ComponentAction,
+  createScene,
+  ViewState,
+} from "./simulation/scene"
 import {
   GuidePanel,
+  ScenarioExplanation,
   ScenarioPicker,
   readEpsCompletion,
   readGuide,
@@ -90,6 +95,7 @@ type Action =
   | { type: "selectCable"; id: string }
   | { type: "wire"; id: string; setting: CableSetting }
   | { type: "ethernet-port"; end: EthernetEnd; port: string }
+  | { type: "feedback"; message: string; invalid?: boolean }
   | { type: "restart" }
 function start(
   build: Build,
@@ -194,6 +200,12 @@ function update(
     }
     case "target":
       return { ...state, destination: action.value }
+    case "feedback":
+      return {
+        ...state,
+        feedback: action.message,
+        invalid: Boolean(action.invalid),
+      }
     case "place": {
       if (
         mode === "disassembly" &&
@@ -283,6 +295,8 @@ function Workspace({
     scenario ? readGuide(userId, scenario) : startGuide()
   )
   const coolingCase = scenario?.id === "TS-001"
+  const [componentAction, setComponentAction] = useState<ComponentAction>()
+  const [pendingPart, setPendingPart] = useState<PartId>()
   const coolerStep = guide.coolerStep ?? 0
   const removed = coolingCase && coolerStep > 0 && coolerStep < 4
   const fanUnplugged =
@@ -311,6 +325,37 @@ function Workspace({
   const [error, setError] = useState("")
   const [retry, setRetry] = useState(0)
   const repaired = guide.stage === "verify" || guide.stage === "complete"
+  const coolerRepair =
+    coolingCase && guide.stage === "fix"
+      ? coolerSteps[coolerStep]?.id
+      : undefined
+  const reseat =
+    guide.stage === "fix" &&
+    (scenario?.id === "TS-002" || scenario?.id === "TS-005")
+  const installing = mode === "assembly"
+  const componentActions: ComponentAction[] = troubleshooting
+    ? ["connect", "remove"]
+    : [installing ? "connect" : "remove"]
+  const connectPart = troubleshooting
+    ? coolerRepair === "install" || reseat
+      ? scenario?.part
+      : undefined
+    : installing && required !== "case"
+      ? required
+      : undefined
+  const removePart = troubleshooting
+    ? coolerRepair === "remove"
+      ? scenario?.part
+      : undefined
+    : !installing && required !== "case"
+      ? required
+      : undefined
+  const connectTarget =
+    componentAction === "connect" &&
+    pendingPart === connectPart &&
+    selected === connectPart
+      ? connectPart
+      : undefined
   const display = useMemo(
     () => scenarioDisplay(scenario, guide),
     [scenario, guide]
@@ -334,7 +379,11 @@ function Workspace({
     [coolerStep, cooling, removed, repaired, scenario]
   )
   const host = useRef<HTMLDivElement>(null)
+  const connectButton = useRef<HTMLButtonElement>(null)
   const scene = useRef<ReturnType<typeof createScene> | null>(null)
+  const componentInput = useRef<(id?: PartId, target?: PartId) => void>(
+    () => {}
+  )
   const view = useRef<ViewState>({
     selected,
     required,
@@ -345,6 +394,8 @@ function Workspace({
     diagnostic,
     display,
     cooling,
+    componentAction,
+    connectTarget,
   })
   useEffect(() => {
     const next = {
@@ -357,6 +408,8 @@ function Workspace({
       diagnostic,
       display,
       cooling,
+      componentAction,
+      connectTarget,
     }
     view.current = next
     scene.current?.sync(next)
@@ -370,6 +423,8 @@ function Workspace({
     diagnostic,
     display,
     cooling,
+    componentAction,
+    connectTarget,
   ])
   useEffect(() => {
     if (!scenario) return
@@ -424,6 +479,7 @@ function Workspace({
           select: selectPart,
           selectCable: (id) => dispatch({ type: "selectCable", id }),
           drop: (id, value) => dispatch({ type: "place", id, value }),
+          tap: (id, target) => componentInput.current(id, target),
           progress: setLoading,
           ready: () => setLoading(""),
           error: setError,
@@ -446,6 +502,7 @@ function Workspace({
     if (!scenario) return
     const next = advanceGuide(scenario, guide, action)
     if (next === guide) return
+    setPendingPart(undefined)
     setGuide(next)
     if (action.type === "test") {
       const test = scenario.tests[action.index]
@@ -469,7 +526,98 @@ function Workspace({
     ) {
       scene.current?.inspectDisplay()
     }
+    return next
   }
+
+  const expected = componentAction === "connect" ? connectPart : removePart
+  const connecting = componentAction === "connect"
+  let componentInstruction = troubleshooting
+    ? "Choose an action to connect or remove a component."
+    : installing
+      ? "Choose Connect component to install a part."
+      : "Choose Remove component to remove an installed part."
+  if (connectTarget) {
+    componentInstruction = `Activate ${build.targets[connectTarget]!.label}, the highlighted connection point.`
+  } else if (expected) {
+    const name = parts[expected].name
+    componentInstruction = connecting
+      ? `Select ${name}, then tap its highlighted connection point.`
+      : `Select ${name} on the model or in the component inventory to remove it.`
+  } else if (componentAction) {
+    if (troubleshooting) {
+      componentInstruction = reseat
+        ? "Use Connect component to reseat the part in this repair."
+        : epsCase
+          ? "Use Cables to check power and Ethernet connections."
+          : "Follow the troubleshooting guide for the current step."
+    } else if (required === "case") {
+      componentInstruction =
+        "Confirm a safe work area before working on components."
+    } else if (connecting !== installing) {
+      componentInstruction = installing
+        ? "Use Connect component in this assembly procedure."
+        : "Use Remove component in this disassembly procedure."
+    } else {
+      componentInstruction = installing
+        ? "All components are installed. Use Cables for wiring."
+        : "All removable components are back in the inventory."
+    }
+  }
+
+  const handleComponent = (id?: PartId, target?: PartId) => {
+    const reject = (message: string) =>
+      dispatch({ type: "feedback", message, invalid: true })
+    if (target && target === connectTarget) {
+      setPendingPart(undefined)
+      connectButton.current?.focus({ preventScroll: true })
+      if (scenario) {
+        const next = reseat
+          ? actGuide({
+              type: "fix",
+              index: scenario.choices.fix.findIndex(({ correct }) => correct),
+            })
+          : actGuide({ type: "cooler", step: "install" })
+        if (next)
+          dispatch({
+            type: "feedback",
+            message: next.feedback,
+            invalid: next.incorrect,
+          })
+      } else {
+        dispatch({
+          type: "place",
+          id: target,
+          value: build.targets[target]!.id,
+        })
+      }
+      return
+    }
+    if (!expected) {
+      reject(componentInstruction)
+    } else if (connectTarget) {
+      reject("Tap the highlighted connection point.")
+    } else if (!id) {
+      reject("Select a component on the model or in the inventory.")
+    } else if (id !== expected) {
+      reject(`Complete the current step first. Select ${parts[expected].name}.`)
+    } else if (connecting) {
+      selectPart(id)
+      setPendingPart(id)
+    } else if (scenario) {
+      const next = actGuide({ type: "cooler", step: "remove" })
+      if (next)
+        dispatch({
+          type: "feedback",
+          message: next.feedback,
+          invalid: next.incorrect,
+        })
+    } else {
+      dispatch({ type: "place", id, value: tray })
+    }
+  }
+  useEffect(() => {
+    componentInput.current = handleComponent
+  })
 
   const busy = Boolean(loading || error)
   const inventory = cablesForView(build.id, Boolean(display))
@@ -496,7 +644,6 @@ function Workspace({
   const part = parts[selected]
   const report = compatibility(build, placed)
   const safety = required === "case"
-  const installing = mode === "assembly"
   const removalBlockers =
     !installing && required && !safety
       ? cablesBlockingRemoval(build.id, required, placed, wiring)
@@ -623,7 +770,10 @@ function Workspace({
                   key={id}
                   className="lab-part"
                   aria-pressed={id === selected}
-                  onClick={() => selectPart(id)}
+                  onClick={() => {
+                    if (componentAction) handleComponent(id)
+                    else selectPart(id)
+                  }}
                 >
                   <span
                     className="lab-thumb"
@@ -645,6 +795,45 @@ function Workspace({
             })}
           </div>
           {!found.length && <p>No matching components.</p>}
+          <section
+            className="lab-component-actions"
+            aria-label="Component actions"
+          >
+            <div className="lab-tools">
+              {componentActions.map((action) => (
+                <Button
+                  key={action}
+                  ref={action === "connect" ? connectButton : undefined}
+                  variant={componentAction === action ? "default" : "outline"}
+                  aria-pressed={componentAction === action}
+                  aria-describedby="lab-component-instruction"
+                  disabled={busy}
+                  onClick={() => {
+                    setComponentAction(
+                      componentAction === action ? undefined : action
+                    )
+                    setPendingPart(undefined)
+                    dispatch({ type: "feedback", message: "" })
+                  }}
+                >
+                  {action === "connect"
+                    ? "Connect component"
+                    : "Remove component"}
+                </Button>
+              ))}
+            </div>
+            <p id="lab-component-instruction" aria-live="polite">
+              {componentInstruction}
+            </p>
+            {componentAction && (
+              <p
+                role="status"
+                className={invalid ? "lab-feedback invalid" : "lab-feedback"}
+              >
+                {feedback}
+              </p>
+            )}
+          </section>
         </aside>
         <section className="lab-stage" aria-label="3D workspace">
           <div className="lab-viewport" ref={host} />
@@ -677,7 +866,12 @@ function Workspace({
               progress={guide}
               display={display}
               busy={busy}
-              act={actGuide}
+              act={(action) => {
+                if (actGuide(action) && componentAction) {
+                  setComponentAction(undefined)
+                  dispatch({ type: "feedback", message: "" })
+                }
+              }}
             />
           ) : troubleshooting ? (
             <section className="lab-placement">
@@ -767,6 +961,7 @@ function Workspace({
               )}
             </section>
           )}
+          {epsCase && <ScenarioExplanation id="TS-004" verified={postPassed} />}
           <section className="lab-inspection">
             <h3>{part.name}</h3>
             <p>{part.purpose}</p>
@@ -810,7 +1005,7 @@ function Workspace({
                   ? "Confirm safe work area"
                   : installing
                     ? "Place component"
-                    : "Remove component"}
+                    : "Remove selected component"}
               </Button>
               {!safety && (
                 <p>
@@ -819,12 +1014,14 @@ function Workspace({
               )}
             </div>
           )}
-          <p
-            role="status"
-            className={invalid ? "lab-feedback invalid" : "lab-feedback"}
-          >
-            {feedback}
-          </p>
+          {!componentAction && (
+            <p
+              role="status"
+              className={invalid ? "lab-feedback invalid" : "lab-feedback"}
+            >
+              {feedback}
+            </p>
+          )}
           <section className="lab-placement lab-inspection" aria-label="Cables">
             <h3>
               Cables <small>· {inventory.length}</small>
@@ -1008,6 +1205,8 @@ function Workspace({
                 window.confirm("Restart this procedure from step one?")
               ) {
                 dispatch({ type: "restart" })
+                setComponentAction(undefined)
+                setPendingPart(undefined)
                 if (scenario) {
                   setGuide(startGuide())
                   dispatch({ type: "select", id: scenario.part })

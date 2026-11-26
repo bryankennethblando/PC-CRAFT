@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 export type User = {
   user_id: string
@@ -6,6 +6,11 @@ export type User = {
   last_name: string
   email: string
   role: "learner" | "admin" | "super_admin"
+  privacy_accepted: boolean
+}
+export type PrivacyNotice = {
+  version: string
+  sections: { title: string; text: string }[]
 }
 export type Module = {
   module_id: string
@@ -58,7 +63,7 @@ export type Attempt = {
 }
 type Envelope<T> =
   | { ok: true; data: T; meta?: { has_more: boolean } }
-  | { ok: false; error: { message: string } }
+  | { ok: false; error: { code: string; message: string } }
 
 const tokenKey = "pc-craft-token"
 
@@ -101,7 +106,17 @@ async function request<T>(
   const payload = (await response
     .json()
     .catch(() => null)) as Envelope<T> | null
-  if (payload?.ok === false) throw new Error(payload.error.message)
+  if (payload?.ok === false) {
+    if (
+      payload.error.code === "PRIVACY_CONSENT_REQUIRED" &&
+      token &&
+      token === getToken() &&
+      !signal?.aborted
+    ) {
+      window.dispatchEvent(new Event("pc-craft-privacy-required"))
+    }
+    throw new Error(payload.error.message)
+  }
   if (!response.ok || !payload?.ok)
     throw new Error("The API is unavailable. Please try again.")
   return payload
@@ -134,6 +149,7 @@ type Resource<T> = { data: T; error?: never } | { data?: never; error: string }
 
 export function useResource<T>(path: string | null, list = false) {
   const [revision, setRevision] = useState(0)
+  const reload = useCallback(() => setRevision((value) => value + 1), [])
   const key = `${path}:${list}:${revision}`
   const [state, setState] = useState<{ key: string; result: Resource<T> }>()
   useEffect(() => {
@@ -155,7 +171,7 @@ export function useResource<T>(path: string | null, list = false) {
     data: result?.data,
     error: result?.error,
     loading: Boolean(path) && state?.key !== key,
-    reload: () => setRevision((value) => value + 1),
+    reload,
   }
 }
 

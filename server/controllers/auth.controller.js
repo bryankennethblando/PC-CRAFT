@@ -2,11 +2,11 @@ import { randomBytes, scrypt as derive, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { one, transaction } from '../config/db.js';
 import { log } from '../http.js';
-import { tokenHash, unauthorized } from '../middleware/auth.middleware.js';
+import { publicUserFields, tokenHash, unauthorized } from '../middleware/auth.middleware.js';
+import { currentConsentField, privacyNotice, recordConsent, requireCurrentNotice } from '../privacy.js';
 
 const scrypt = promisify(derive);
 const deriveKey = (password, salt) => scrypt(password, salt, 64, { N: 32768, r: 8, p: 3, maxmem: 64 * 1024 * 1024 });
-const profile = 'user_id, first_name, last_name, email, role';
 
 async function verify(password, verifier) {
   const match = /^scrypt:([a-f0-9]{32}):([a-f0-9]{128})$/.exec(verifier ?? '');
@@ -21,16 +21,18 @@ export async function hashPassword(password) {
 }
 
 export async function register(req, { body }) {
-  const { email, first_name, last_name, password } = body;
+  const { email, first_name, last_name, password, privacy_notice_version } = body;
+  requireCurrentNotice(privacy_notice_version);
   const hash = await hashPassword(password);
   const user = await transaction(req.db, async connection => {
     await connection.execute(
       'INSERT INTO users (first_name, last_name, email, password_hash) VALUES (?,?,?,?)',
       [first_name, last_name, email, hash],
     );
-    const created = await one(connection, `SELECT ${profile} FROM users WHERE user_id = LAST_INSERT_ID()`);
+    const created = await one(connection, `SELECT ${publicUserFields} FROM users u WHERE u.user_id = LAST_INSERT_ID()`);
+    await recordConsent(connection, created.user_id, privacy_notice_version);
     await log(connection, created.user_id, 'auth', 'register', 'user', created.user_id);
-    return created;
+    return { ...created, privacy_accepted: true };
   });
   return { data: user };
 }
@@ -43,16 +45,16 @@ export async function login(req, { body }) {
   const token = randomBytes(32).toString('base64url');
   const data = await transaction(req.db, async connection => {
     const user = await one(connection, `
-      SELECT ${profile} FROM users
-      WHERE user_id = ? AND account_status = 'active' AND BINARY password_hash = ? FOR UPDATE`,
-    [loginRecord.user_id, loginRecord.verifier]);
+      SELECT ${publicUserFields}, ${currentConsentField} FROM users u
+      WHERE u.user_id = ? AND account_status = 'active' AND BINARY password_hash = ? FOR UPDATE`,
+    [privacyNotice.version, loginRecord.user_id, loginRecord.verifier]);
     if (!user) throw unauthorized();
     await connection.execute(`
       INSERT INTO user_sessions (user_id, token_hash, expires_at)
       VALUES (?,?,CURRENT_TIMESTAMP + INTERVAL 7 DAY)`, [user.user_id, tokenHash(token)]);
     const session = await one(connection, 'SELECT expires_at FROM user_sessions WHERE session_id = LAST_INSERT_ID()');
     await log(connection, user.user_id, 'auth', 'login', 'user', user.user_id);
-    return { user, token, ...session };
+    return { user: { ...user, privacy_accepted: Number(user.privacy_accepted) === 1 }, token, ...session };
   });
   return { data };
 }

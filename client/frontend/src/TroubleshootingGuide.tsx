@@ -9,6 +9,7 @@ import {
   evidenceResult,
   guideKey,
   restoreGuide,
+  scenarioExplanations,
   startGuide,
   type GuideAction,
   type DisplayState,
@@ -109,6 +110,56 @@ const titles = {
   verify: "Verify the repair",
   complete: "Scenario complete",
 } as const
+
+export function ScenarioExplanation({
+  id,
+  verified,
+}: {
+  id: ScenarioId
+  verified: boolean
+}) {
+  if (!verified) return null
+  const scenario = id === "TS-004" ? undefined : guidedScenarios[id]
+  const explanation = scenarioExplanations[id]
+  const evidence =
+    scenario?.tests.map(({ label, result }) => `${label}. ${result}`) ??
+    scenarioExplanations["TS-004"].evidence
+  const result = scenario?.choices.verify.find(
+    ({ correct }) => correct
+  )?.feedback
+
+  return (
+    <section
+      className="lab-report lab-placement"
+      aria-label="Repair explanation"
+    >
+      <h2>Repair explanation</h2>
+      <h3>What happened</h3>
+      <p>{scenario?.intake ?? scenarioExplanations["TS-004"].symptoms}</p>
+      <h3>Root cause</h3>
+      <p>{explanation.cause}</p>
+      <h3>How to diagnose it</h3>
+      <ul>
+        {evidence.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      <h3>Repair steps</h3>
+      <ol className="lab-repair-steps">
+        {explanation.repair.map((step) => (
+          <li key={step}>{step}</li>
+        ))}
+      </ol>
+      <h3>How to verify the repair</h3>
+      <p>{explanation.verification}</p>
+      {result && (
+        <p>
+          <strong>Verified result.</strong> {result}
+        </p>
+      )}
+    </section>
+  )
+}
 
 export function GuidePanel({
   scenario,
@@ -216,6 +267,7 @@ export function GuidePanel({
           {feedback}
         </p>
       </section>
+      <ScenarioExplanation id={scenario.id} verified={stage === "complete"} />
       {evidence.length > 0 && (
         <section className="lab-report" aria-label="Evidence log">
           <h3>Evidence log</h3>

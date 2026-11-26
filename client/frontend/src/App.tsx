@@ -1,12 +1,13 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react"
-import { Bell, BookOpen, ChevronDown, LogOut } from "lucide-react"
+import { Bell, ChevronDown, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Admin } from "./Admin"
 import { api, getToken, message, setToken, useResource, type User } from "./api"
 import { Dashboard } from "./Dashboard"
 import { Modules, ProgressPage } from "./Learning"
-import { AuthPage, Landing } from "./Public"
+import { AuthPage, HelpCenter, Landing } from "./Public"
 import { Quizzes } from "./Quizzes"
+import { LegalPage, PrivacyPage } from "./Privacy"
 import { Brand, Heading, LinkButton, Status } from "./ui"
 import "./site.css"
 
@@ -40,7 +41,9 @@ export default function App() {
     pending?: boolean
   }>({})
   const profile = useResource<User>(token && !signedIn ? "/auth/me" : null)
+  const refreshProfile = profile.reload
   const user = signedIn ?? (token ? (profile.data ?? null) : null)
+  const consentRequired = Boolean(user && !user.privacy_accepted)
   const [page, tab, id, ...extra] = route.slice(1).split("/")
   const admin = Boolean(user && user.role !== "learner")
   const valid =
@@ -52,6 +55,10 @@ export default function App() {
             "login",
             "register",
             "progress",
+            "privacy",
+            "privacy-policy",
+            "terms",
+            "help",
             "simulation",
             "troubleshooting",
           ].includes(page)
@@ -65,6 +72,10 @@ export default function App() {
                 ? ["modules", "lessons", "quizzes"].includes(tab)
                 : idPattern.test(id) &&
                   ["users", "modules", "lessons", "quizzes"].includes(tab))))
+  const labPage =
+    valid &&
+    !consentRequired &&
+    (page === "simulation" || page === "troubleshooting")
   const protectedPage =
     valid &&
     ["dashboard", "modules", "quizzes", "progress", "admin"].includes(page)
@@ -99,13 +110,19 @@ export default function App() {
       setSessionToken(null)
       setSignedIn(null)
     }
+    const privacyRequired = () => {
+      setSignedIn(null)
+      refreshProfile()
+    }
     window.addEventListener("hashchange", change)
     window.addEventListener("pc-craft-session-ended", sessionEnded)
+    window.addEventListener("pc-craft-privacy-required", privacyRequired)
     return () => {
       window.removeEventListener("hashchange", change)
       window.removeEventListener("pc-craft-session-ended", sessionEnded)
+      window.removeEventListener("pc-craft-privacy-required", privacyRequired)
     }
-  }, [])
+  }, [refreshProfile])
 
   function login(profile: User) {
     setSessionToken(getToken())
@@ -140,14 +157,35 @@ export default function App() {
   }
 
   let content: ReactNode
-  if (!valid)
+  if (valid && (page === "privacy-policy" || page === "terms")) {
+    content = (
+      <LegalPage terms={page === "terms"} consentRequired={consentRequired} />
+    )
+  } else if (consentRequired || (valid && page === "privacy")) {
+    content = (
+      <PrivacyPage
+        acknowledgment={
+          consentRequired
+            ? {
+                onAgree: (updated) => {
+                  setSignedIn(updated)
+                  if (page === "privacy") location.hash = home
+                },
+                onDecline: logout,
+                signingOut: logoutState.pending,
+              }
+            : undefined
+        }
+      />
+    )
+  } else if (!valid)
     content = (
       <main id="main" tabIndex={-1} className="wrap workspace">
         <Heading title="Page not found" />
         <LinkButton to="#/">Back to overview</LinkButton>
       </main>
     )
-  else if (protectedPage && token && !user)
+  else if (token && !user && (protectedPage || profile.loading))
     content = (
       <main id="main" tabIndex={-1} className="wrap workspace">
         <Status {...profile} />
@@ -173,7 +211,7 @@ export default function App() {
         <LinkButton to={home}>Return to dashboard</LinkButton>
       </main>
     )
-  else if (page === "simulation" || page === "troubleshooting") {
+  else if (labPage) {
     content = (
       <Suspense
         fallback={
@@ -189,7 +227,8 @@ export default function App() {
         />
       </Suspense>
     )
-  } else if (page === "login" || page === "register") {
+  } else if (page === "help") content = <HelpCenter />
+  else if (page === "login" || page === "register") {
     content = user ? (
       <main id="main" tabIndex={-1} className="wrap workspace">
         <Heading title={`You're signed in as ${user.first_name}.`} />
@@ -236,29 +275,73 @@ export default function App() {
       >
         <div className="wrap header-inner">
           <Brand />
-          <nav aria-label="Main navigation">
-            {links.map(([path, label]) => (
-              <a
-                key={path}
-                href={`#${path}`}
-                aria-current={active === path ? "page" : undefined}
-              >
-                {label}
-              </a>
-            ))}
-          </nav>
-          <div className="header-account">
-            {user?.role === "learner" ? (
-              <>
+          {!consentRequired && (
+            <nav aria-label="Main navigation">
+              {links.map(([path, label]) => (
                 <a
-                  className="activity-link"
-                  href="#/dashboard/activity"
-                  aria-label="Recent activity"
+                  key={path}
+                  href={`#${path}`}
+                  aria-current={active === path ? "page" : undefined}
                 >
-                  <Bell aria-hidden="true" />
+                  {label}
                 </a>
-                <details className="learner-account" key={route}>
-                  <summary className="account">
+              ))}
+            </nav>
+          )}
+          {!consentRequired && (
+            <div className="header-account">
+              {user?.role === "learner" ? (
+                <>
+                  <a
+                    className="activity-link"
+                    href="#/dashboard/activity"
+                    aria-label="Recent activity"
+                  >
+                    <Bell aria-hidden="true" />
+                  </a>
+                  <details className="learner-account" key={route}>
+                    <summary className="account">
+                      <span className="avatar" aria-hidden="true">
+                        {user.first_name[0]}
+                        {user.last_name[0]}
+                      </span>
+                      <span>
+                        <strong>
+                          {user.first_name} {user.last_name}
+                        </strong>
+                        <small>Foundation learner</small>
+                      </span>
+                      <ChevronDown aria-hidden="true" />
+                    </summary>
+                    <div className="panel account-menu">
+                      <a
+                        href="#/progress"
+                        onClick={(event) => {
+                          event.currentTarget
+                            .closest("details")
+                            ?.removeAttribute("open")
+                        }}
+                      >
+                        Progress and profile
+                      </a>
+                      <Button
+                        variant="ghost"
+                        aria-label="Log out"
+                        disabled={logoutState.pending}
+                        onClick={logout}
+                      >
+                        <LogOut aria-hidden="true" /> Log out
+                      </Button>
+                    </div>
+                  </details>
+                </>
+              ) : user ? (
+                <>
+                  <a
+                    className="account"
+                    href={admin ? home : "#/progress"}
+                    aria-label={admin ? "Admin dashboard" : "Your profile"}
+                  >
                     <span className="avatar" aria-hidden="true">
                       {user.first_name[0]}
                       {user.last_name[0]}
@@ -267,68 +350,28 @@ export default function App() {
                       <strong>
                         {user.first_name} {user.last_name}
                       </strong>
-                      <small>Foundation learner</small>
+                      <small>{user.role.replaceAll("_", " ")}</small>
                     </span>
-                    <ChevronDown aria-hidden="true" />
-                  </summary>
-                  <div className="panel account-menu">
-                    <a
-                      href="#/progress"
-                      onClick={(event) => {
-                        event.currentTarget
-                          .closest("details")
-                          ?.removeAttribute("open")
-                      }}
-                    >
-                      Progress and profile
-                    </a>
-                    <Button
-                      variant="ghost"
-                      aria-label="Log out"
-                      disabled={logoutState.pending}
-                      onClick={logout}
-                    >
-                      <LogOut aria-hidden="true" /> Log out
-                    </Button>
-                  </div>
-                </details>
-              </>
-            ) : user ? (
-              <>
-                <a
-                  className="account"
-                  href={admin ? home : "#/progress"}
-                  aria-label={admin ? "Admin dashboard" : "Your profile"}
-                >
-                  <span className="avatar" aria-hidden="true">
-                    {user.first_name[0]}
-                    {user.last_name[0]}
-                  </span>
-                  <span>
-                    <strong>
-                      {user.first_name} {user.last_name}
-                    </strong>
-                    <small>{user.role.replaceAll("_", " ")}</small>
-                  </span>
-                </a>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Log out"
-                  title="Log out"
-                  disabled={logoutState.pending}
-                  onClick={logout}
-                >
-                  <LogOut aria-hidden="true" />
-                </Button>
-              </>
-            ) : (
-              <>
-                <a href="#/login">Log in</a>
-                <LinkButton to="#/register">Start learning</LinkButton>
-              </>
-            )}
-          </div>
+                  </a>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Log out"
+                    title="Log out"
+                    disabled={logoutState.pending}
+                    onClick={logout}
+                  >
+                    <LogOut aria-hidden="true" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <a href="#/login">Log in</a>
+                  <LinkButton to="#/register">Start learning</LinkButton>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </header>
       {logoutState.error && (
@@ -337,18 +380,30 @@ export default function App() {
         </div>
       )}
       {content}
-      <footer
-        className={
-          user?.role === "learner"
-            ? "site-footer learner-footer"
-            : "site-footer"
-        }
-      >
+      <footer className="site-footer">
         <div className="wrap">
-          <span>© {new Date().getFullYear()} PC-CRAFT</span>
-          <a href="#/modules">
-            <BookOpen aria-hidden="true" /> Explore modules
-          </a>
+          <div className="footer-row">
+            <Brand />
+            {!consentRequired && (
+              <nav aria-label="Footer navigation">
+                <a href="#/modules">Explore modules</a>
+                <a href="#/simulation">Assembly lab</a>
+                <a href="#/help">Help center</a>
+                <a href="#/">About PC-CRAFT</a>
+              </nav>
+            )}
+          </div>
+          <div className="footer-row footer-meta">
+            <span>
+              © {new Date().getFullYear()} PC-CRAFT. Built for the next generation
+              of computer technicians.
+            </span>
+            <nav aria-label="Legal">
+              <a href="#/privacy-policy">Privacy policy</a>
+              <span aria-hidden="true">·</span>
+              <a href="#/terms">Terms of use</a>
+            </nav>
+          </div>
         </div>
       </footer>
     </div>

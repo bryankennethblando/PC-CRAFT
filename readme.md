@@ -257,6 +257,8 @@ curl --fail http://localhost:3000/api/health
 Open http://localhost:3000. Nginx serves the React build and proxies `/api` to
 Express on the Compose network. Compose uses port 5000 for Express inside the
 network. MySQL remains accessible to local SQL clients on port 3307 by default.
+If port 3000 is occupied, set `FRONTEND_PORT` in `.env` (for example, `3001`)
+and open `http://localhost:3001`. Keep `FRONTEND_ORIGIN` matched to that port.
 
 MySQL applies numbered migrations on a fresh data volume. For an existing volume,
 follow the [database upgrade instructions](database/README.md#manual-apply).

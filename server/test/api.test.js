@@ -7,6 +7,7 @@ import mysql from 'mysql2/promise';
 import { createPool, one } from '../config/db.js';
 import { importCurriculum, readCurriculum } from '../scripts/import-curriculum.js';
 import { createApp } from '../server.js';
+import { hashPassword } from '../controllers/auth.controller.js';
 
 test('PC-CRAFT API against a fresh MySQL database', async t => {
   assert.match(process.env.TEST_DB_PORT ?? '', /^\d+$/, 'Set TEST_DB_PORT to an isolated MySQL instance.');
@@ -55,10 +56,21 @@ test('PC-CRAFT API against a fresh MySQL database', async t => {
     return { ...value, headers: response.headers };
   }
   const credentials = name => ({ email: `${name}@example.invalid`, password: 'test-fixture-password' });
+  const notice = (await request('GET', '/auth/privacy', 200)).data;
+  assert.ok(notice.sections.length);
+  const consent = { privacy_accepted: true, privacy_notice_version: notice.version };
   async function register(name) {
     return (await request('POST', '/auth/register', 201, null, {
-      ...credentials(name), first_name: name, last_name: 'Example',
+      ...credentials(name), first_name: name, last_name: 'Example', ...consent,
     })).data;
+  }
+  async function createWithoutConsent(name, role) {
+    const { email, password } = credentials(name);
+    await pool.execute(
+      'INSERT INTO users (first_name, last_name, email, password_hash, role) VALUES (?,?,?,?,?)',
+      [name, 'Example', email, await hashPassword(password), role],
+    );
+    return one(pool, 'SELECT user_id FROM users WHERE email = ?', [email]);
   }
   async function login(name) {
     return (await request('POST', '/auth/login', 200, null, credentials(name))).data.token;
@@ -76,22 +88,51 @@ test('PC-CRAFT API against a fresh MySQL database', async t => {
   const unsupported = await fetch(base + '/auth/register', { method: 'POST', body: 'not JSON' });
   assert.equal(unsupported.status, 415);
   await post('/auth/register', null, {
-    ...credentials('injected'), first_name: 'Test', last_name: 'Example', role: 'super_admin',
+    ...credentials('injected'), first_name: 'Test', last_name: 'Example', ...consent, role: 'super_admin',
   }, 400);
+  const noConsent = { ...credentials('no-consent'), first_name: 'Test', last_name: 'Example' };
+  await post('/auth/register', null, noConsent, 400);
+  await post('/auth/register', null, { ...noConsent, ...consent, privacy_accepted: false }, 400);
+  await post('/auth/register', null, { ...noConsent, ...consent, privacy_notice_version: 'stale-version' }, 409);
+  assert.equal(await one(pool, 'SELECT user_id FROM users WHERE email = ?', [noConsent.email]), undefined);
   await post('/auth/login', null, credentials('missing'), 401);
 
   const learnerUser = await register('learner');
   assert.equal(learnerUser.role, 'learner');
   assert.equal(typeof learnerUser.user_id, 'string');
   assert.equal(Object.hasOwn(learnerUser, 'password_hash'), false);
-  await register('other');
-  const adminUser = await register('admin');
+  const otherUser = await createWithoutConsent('other', 'learner');
+  const adminUser = await createWithoutConsent('admin', 'admin');
   const superUser = await register('super');
-  await pool.execute("UPDATE users SET role = 'admin' WHERE user_id = ?", [adminUser.user_id]);
+  await pool.execute('INSERT INTO privacy_consents (user_id, notice_version) VALUES (?,?)', [adminUser.user_id, 'stale-version']);
   await pool.execute("UPDATE users SET role = 'super_admin' WHERE user_id = ?", [superUser.user_id]);
   const learner = await login('learner');
+  assert.equal(learnerUser.privacy_accepted, true);
+  assert.equal((await one(pool, 'SELECT notice_version FROM privacy_consents WHERE user_id = ?', [learnerUser.user_id])).notice_version, notice.version);
+  const unsigned = (await post('/auth/login', null, credentials('other'), 200)).data;
+  assert.equal(unsigned.user.privacy_accepted, false);
+  assert.equal((await get('/auth/me', unsigned.token)).data.privacy_accepted, false);
+  for (const path of ['/modules', '/progress', '/quizzes', '/simulation/attempts', '/troubleshooting/attempts']) {
+    assert.equal((await get(path, unsigned.token, 403)).error.code, 'PRIVACY_CONSENT_REQUIRED');
+  }
+  await post('/auth/privacy/consent', unsigned.token, { ...consent, privacy_accepted: false }, 400);
+  await post('/auth/privacy/consent', unsigned.token, { ...consent, user_id: learnerUser.user_id }, 400);
+  await post('/auth/logout', unsigned.token, undefined, 200);
+  await get('/auth/me', unsigned.token, 401);
+  assert.equal(await one(pool, 'SELECT notice_version FROM privacy_consents WHERE user_id = ?', [otherUser.user_id]), undefined);
   const other = await login('other');
+  assert.equal((await post('/auth/privacy/consent', other, consent, 200)).data.privacy_accepted, true);
+  assert.equal((await get('/auth/me', await login('other'))).data.privacy_accepted, true);
   const admin = await login('admin');
+  assert.equal((await get('/admin/dashboard', admin, 403)).error.code, 'PRIVACY_CONSENT_REQUIRED');
+  await post('/auth/privacy/consent', admin, { ...consent, privacy_notice_version: 'stale-version' }, 409);
+  await post('/auth/privacy/consent', admin, consent, 200);
+  await pool.execute("UPDATE privacy_consents SET accepted_at = '2025-01-01 00:00:00' WHERE user_id = ? AND notice_version = ?", [adminUser.user_id, notice.version]);
+  await post('/auth/privacy/consent', admin, consent, 200);
+  const history = await one(pool, `SELECT COUNT(*) AS total, SUM(accepted_at = '2025-01-01 00:00:00') AS preserved
+    FROM privacy_consents WHERE user_id = ?`, [adminUser.user_id]);
+  assert.equal(Number(history.total), 2);
+  assert.equal(Number(history.preserved), 1);
   const superAdmin = await login('super');
   assert.deepEqual((await get('/auth/me', learner)).data, learnerUser);
   assert.equal((await one(pool, 'SELECT COUNT(*) AS count FROM user_sessions WHERE token_hash = ?', [learner])).count, '0');

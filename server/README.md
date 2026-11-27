@@ -18,12 +18,20 @@ Health runs a live database query and returns HTTP 503 if it fails. SIGINT and
 SIGTERM close the HTTP server and connection pool.
 
 Register a learner with `first_name`, `last_name`, `email`, and `password` (12–128
-characters). To provision an administrator, register a dedicated account and
+characters), `privacy_accepted: true`, and `privacy_notice_version` from the current
+Privacy Notice. To provision an administrator, register a dedicated account and
 have a database operator set its role to `admin` or `super_admin` after confirming
 the account. There is no public role assignment route. Seed accounts are disabled
 and have no usable credentials.
 
 ## Contract
+
+Apply database migration `003_privacy_consent` before deploying this API. Protected
+learning and admin routes return `403 PRIVACY_CONSENT_REQUIRED` until the signed-in
+account has accepted the current notice. Login, profile lookup, acknowledgment, and
+logout remain available before acceptance. Update the text and increment the version
+in `privacy.js` together whenever the notice changes. The project owner must supply
+the retention and privacy contact details before publication.
 
 All paths are under `/api`. JSON responses use `{ "ok": true, "data": ... }` or
 `{ "ok": false, "error": { "code": "...", "message": "..." } }`. Paginated lists
@@ -43,7 +51,9 @@ has a heartbeat from the past five minutes.
 | --- | --- |
 | `GET /health` | Public |
 | `POST /auth/register`, `POST /auth/login` | Public. Login accepts `email` and `password`. |
-| `GET /auth/me`, `POST /auth/logout` | Signed in |
+| `GET /auth/privacy` | Public. Returns the current notice text and version. |
+| `GET /auth/me`, `POST /auth/logout` | Signed in. The profile includes `privacy_accepted`. |
+| `POST /auth/privacy/consent` | Signed in. Send `privacy_accepted: true` and the displayed `privacy_notice_version`. |
 | `GET /modules`, `GET /modules/:id`, `GET /modules/:id/lessons`, `GET /modules/lessons/:id` | Signed in. Published content only. |
 | `GET /quizzes`, `GET /quizzes/:id` | Signed in. Published quizzes with published questions and choices. The list accepts optional `module_id`. |
 | `POST /quizzes/:id/attempts` | Learner. Start an attempt. |

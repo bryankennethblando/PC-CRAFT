@@ -1,5 +1,5 @@
 import type { BuildId, PartId } from "./catalog"
-import type { CableSettings } from "./cableConfig"
+import { cableStatus, type CableSettings } from "./cableConfig.ts"
 
 export type GuidedScenarioId = "TS-001" | "TS-002" | "TS-003" | "TS-005"
 type Test = {
@@ -365,11 +365,88 @@ export const coolerSteps = [
   {
     id: "fan",
     label: "Reconnect CPU fan cable",
-    instruction: "Seat the fan cable on the motherboard CPU_FAN header.",
+    instruction:
+      "In Cables, select CPU cooler PWM and attach its motherboard end to CPU_FAN.",
     feedback:
       "The fan cable is seated in CPU_FAN. Restore power and verify cooling under load.",
   },
 ] as const
+
+export const scenarioExplanations = {
+  "TS-001": {
+    cause:
+      "Dust blocked airflow through the CPU heatsink. Heat built up faster than the cooler could remove it, so thermal protection shut the PC down at 99°C.",
+    repair: [
+      "Isolate power, unplug the CPU_FAN lead, and remove the CPU cooler.",
+      "Clear the dust from the exposed heatsink fins.",
+      "Apply fresh thermal paste to the CPU before reinstalling the cooler.",
+      "Seat the cooler over the CPU and tighten its mount evenly.",
+      "Reconnect the fan lead to the CPU_FAN header before restoring power.",
+    ],
+    verification:
+      "Restore power, read the idle temperature, and repeat the same load test. Fan speed at idle alone cannot confirm that cooling works under load.",
+  },
+  "TS-002": {
+    cause:
+      "DIMM 2 was loose after the memory upgrade. The PC could power its fans, but it could not initialize memory, so POST stopped before the firmware screen appeared.",
+    repair: [
+      "Shut down and isolate power before touching the memory.",
+      "Release the retainer and lift DIMM 2 out of its slot.",
+      "Align the notch with the slot key and press the module down evenly until fully seated.",
+      "Confirm the retaining clip is closed before reconnecting power.",
+    ],
+    verification:
+      "Restore power and run POST. Check the DRAM indicator and the firmware display.",
+  },
+  "TS-003": {
+    cause:
+      "HDMI was connected to the motherboard video port. This CPU has no integrated graphics, so that port supplied no signal even though Windows had booted. The dedicated graphics card has the active output.",
+    repair: [
+      "Disconnect the PC end of the HDMI cable from the upper motherboard video port.",
+      "Seat the same cable in the lower dedicated GPU HDMI port. Keep the monitor on HDMI 1.",
+    ],
+    verification:
+      "Check the monitor for an HDMI signal and a visible Windows desktop. The startup chime already played before the repair.",
+  },
+  "TS-004": {
+    symptoms:
+      "After a PSU replacement, the fans twitch and the PC shuts off before POST begins.",
+    cause:
+      "The 8-pin EPS CPU power lead was unplugged. The CPU was missing its dedicated power connection even though the 24-pin main power lead and front-panel switch were connected.",
+    evidence: [
+      "The brief fan twitch confirms that pressing the power button starts the power-on sequence.",
+      "The EPS connection readout shows CPU_PWR is empty. The 24-pin ATX header is a separate connection and will not seat the EPS plug.",
+      "Check that 24-pin ATX main power and POWER SW are still seated. The Ethernet link check is separate from POST.",
+    ],
+    repair: [
+      "Shut down and unplug AC power.",
+      "Identify the EPS CPU power lead and the motherboard’s 8-pin CPU_PWR header.",
+      "Align and seat the EPS plug in CPU_PWR until the clip latches. Confirm the 24-pin ATX and POWER SW connections are still seated.",
+    ],
+    verification:
+      "Restore power and run POST verification. The system should stay powered and begin POST without cutting off.",
+  },
+  "TS-005": {
+    cause:
+      "The missing M.2 retention screw let the NVMe SSD rise out of its socket. Firmware could not detect the system drive, leaving it with no bootable entry.",
+    repair: [
+      "Shut down and isolate power before handling the SSD.",
+      "Align the NVMe SSD with its M.2 socket and insert it fully.",
+      "Lower the drive onto its standoff and secure it with the retention screw so it lies flat.",
+    ],
+    verification:
+      "Restore power, confirm the NVMe drive is listed in firmware, and boot to the OS desktop. A flat drive alone does not confirm detection.",
+  },
+} satisfies Record<
+  GuidedScenarioId | "TS-004",
+  {
+    symptoms?: string
+    cause: string
+    evidence?: string[]
+    repair: string[]
+    verification: string
+  }
+>
 
 export type GuideProgress = {
   stage: GuideStage
@@ -471,24 +548,29 @@ export function epsCompletionKey(userId: string, build: BuildId) {
 }
 
 export function verifyEpsPost(wiring: CableSettings) {
-  if (wiring.eps === "wrong-eps-header")
+  if (wiring.eps?.to === "wrong-eps")
     return {
       passed: false,
       message:
         "Move the EPS plug to the motherboard 8-pin CPU_PWR header. The 24-pin ATX header is for main power.",
     }
-  if (wiring.eps !== "seated")
+  if (wiring.eps?.to === "seated" && !wiring.eps.from)
+    return {
+      passed: false,
+      message: "Connect the EPS lead to the PSU CPU power output.",
+    }
+  if (cableStatus(wiring.eps) !== "connected")
     return {
       passed: false,
       message:
         "Connect the 8-pin EPS 12V cable to the motherboard CPU_PWR header.",
     }
-  if (wiring.atx !== "seated")
+  if (cableStatus(wiring.atx) !== "connected")
     return {
       passed: false,
       message: "Reconnect the 24-pin ATX main power lead.",
     }
-  if (wiring.powerSw !== "power-switch")
+  if (cableStatus(wiring.powerSw) !== "connected")
     return { passed: false, message: "Seat POWER SW on the PWR_SW pins." }
   return { passed: true, message: "The system stays powered and POST begins." }
 }

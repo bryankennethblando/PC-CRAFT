@@ -20,6 +20,7 @@ In production, serve that directory and forward `/api` to Express, or set
 | React route | Express API under `/api` |
 | --- | --- |
 | `#/`, `#/login`, `#/register` | `/auth/login`, `/auth/register`, `/auth/me`, `/auth/logout` |
+| `#/privacy` and the sign-in acknowledgment | `/auth/privacy`, `/auth/privacy/consent` |
 | `#/dashboard`, `#/progress` | `/progress`, `/progress/lessons`, `/quizzes/attempts`, `/feedback` |
 | `#/modules/:moduleId/:lessonId` | `/modules`, `/modules/:id/lessons`, `/modules/lessons/:id`, `/progress/lessons`, `/progress/lessons/:id`, `/quizzes?module_id=:moduleId` |
 | `#/quizzes/:quizId/:attemptId` | `/quizzes`, `/quizzes/:id`, `/quizzes/:id/attempts`, `/quizzes/attempts/:id`, `/quizzes/attempts/:id/submit` |
@@ -79,22 +80,20 @@ DIMM slots. The targets were checked against front and open-side model renders.
 
 ### Wiring and troubleshooting
 
-Select a cable in the scene or in **Cables**. Connect or unplug its removable
-end once its hardware is installed. For POWER SW, choose PWR_SW or RESET_SW on
-the simulated F_PANEL header. Seating it on RESET_SW prevents the simulated
-power button from starting the PC. Assembly starts with loose leads.
-For external Ethernet, use **Inspect cable** to view both endpoints, then
-choose **Router LAN jack** for the router end and **Rear LAN jack** for the PC
-end. An incorrect port leaves that end where it was. Assembly finishes when
-all components are installed and all required cables are connected, including
-both Ethernet ends.
+Select a cable in the scene or in **Cables**, then choose a port for each
+end. Assembly starts with loose leads. **Inspect cable** frames its two ends.
+The panel shows how many ends are seated. A cable counts toward completion
+only when both ends match and both components are installed. POWER SW can
+physically fit the RESET_SW pins and show a wiring fault. The PSU and
+motherboard EPS plugs must both be seated for the TS-004 power check.
 
-Disassembly starts with seated leads. The current step lists cables to
-disconnect before the part can go to the tray, whether by dragging it or by
-using **Remove component**. Optional leads and a misseated POWER SW plug
-also block removal when attached. For Ethernet, unplug the PC end before
-removing the motherboard. Cable settings save with procedure progress in the
-current tab. Restart restores the procedure defaults.
+Disassembly starts with seated leads. Each removal step lists plugs attached
+to that component, including optional leads and POWER SW on the wrong pins.
+Disconnect the component end before removing the part using either the tray
+or the component controls. The opposite plug remains attached and accessible
+in **Cables**. Progress saves in the current tab. In older assembly saves the
+previously selected internal destination stays seated. Confirm its source
+using the new endpoint control. Two-ended Ethernet saves retain both choices.
 
 TS-004 checks that the EPS connector is seated in the motherboard CPU_PWR
 header. Run POST verification to confirm the system stays powered and starts
@@ -126,33 +125,34 @@ with the step-by-step cooler repair.
 
 ### Cable inventory and calibration
 
-Basic has seven leads. Both builds have ATX, EPS, CPU PWM, POWER SW, HDD SATA
-data and power, and external RJ45. Advanced adds GPU PCIe power, Fan01–Fan03
-PWM, front USB 3.0, and HD Audio for 13 leads. The Advanced SSD is M.2 and uses
-its board socket for power and data. Assembly requires all seven Basic leads
-and eight Advanced leads, including GPU power on Advanced.
+Basic requires eight leads: ATX, EPS, CPU PWM, POWER SW, HDD SATA data,
+HDD SATA power, external RJ45, and GPU power. The Basic GPU root identifies
+an MSI RX 580. Its scan shows the auxiliary socket at the end opposite the
+rear bracket. The eight-pin plug fits that socket. [MSI RX 580 specifications](https://www.msi.com/Graphics-Card/radeon-rx-580-armor-8g-oc/Specification)
 
-The two served optimized binaries match the supplied downloads. Both contain
-top-level `ram_1` and `ram_2` and three distinct case fan groups. Only Advanced
-has an `ssd` group. Basic has the separately named USB 3.0 and audio headers.
-Advanced combines its board sockets into larger meshes and uses virtual
-header positions for those leads. The Basic fan and I/O meshes do not add
-Advanced leads to Basic.
+Advanced has 14 leads and requires nine. Its GPU texture identifies an
+RTX 3090 with the Founders Edition cooler. Two independently removable PCIe
+leads power a dual-eight-pin adapter mounted on the card. Both leads are
+required. Three case PWM leads, front USB, and front audio are optional. The
+M.2 SSD takes power and data through its board socket. [NVIDIA RTX 3090 installation guide, page 11](https://www.nvidia.com/content/geforce-gtx/GEFORCE_RTX_3090_USER_GUIDE_v01.pdf)
 
-| Endpoint | Basic asset | Advanced asset |
+The served models use different orientations. Anchor measurements use each
+part's installed transform from the catalog. Three.js sanitizes GLB node names.
+
+| Endpoint | Basic model | Advanced model |
 | --- | --- | --- |
-| Board ATX, SATA and LAN | `24_pin_connector_0`, `sata_port001_55`, `ethernet_and_usb_20_41` | Virtual faces aligned with the board edge, SATA stack, and rear I/O |
-| HDD SATA power and data | `Object_17` and `Object_19` at the drive end | Same named meshes |
-| Case fan leads | Basic tier omits the leads | `Fan01`, `Fan02`, `Fan03` frame-relative positions, with virtual SYS_FAN headers |
-| PSU and GPU outputs | Virtual ATX, EPS and peripheral positions on the modular face | Same virtual outputs plus PCIe output and GPU input |
-| Other endpoints | Virtual CPU_FAN, cooler lead, EPS, front switch lead and both F_PANEL pin pairs | Same virtual endpoints plus front USB and audio leads and their board headers |
-| External router | Virtual prop outside rear I/O | Virtual prop outside rear I/O |
+| Board ATX and EPS | Separate 24-pin and 8-pin housings | 24-pin socket beside the DIMMs and 8-pin section of the top power block on `polySurface21_M_sockets_0` |
+| Board fans and front I/O | CPU_FAN silk on `motherboard_65`, F_PANEL pin block on `bilinmeyen_pin_8` | Top fan header, bottom fan row, F_PANEL, U32G1 and AAFP on `polySurface20_f_2693_1_M_Cover_0` |
+| SATA | Board socket opens toward the side cover | Stacked board sockets open toward the front of the case |
+| Drive | Data and power contacts on `Object_19` and `Object_17` | Same meshes in the rotated drive |
+| Modular PSU | Separate socket mouths on `modular_ports_7` | Same bank, rotated toward the front of the case |
+| Graphics | Eight-pin housing on scan mesh `Object_2` | Procedural adapter on the exposed edge of the card, opposite its PCIe fingers |
+| Rear LAN | RJ45 opening in the combined USB/LAN housing | RJ45 opening above the rear audio bank |
 
-Three.js sanitizes the node names shown above. Both PSU meshes include
-`modular_ports_7`, which represents the modular area without distinguishing
-the individual output types. The Advanced GPU's generic `Socket` mesh is at
-its PCIe slot edge. Its power input uses a virtual face on the edge accessible
-from the open side.
+The PSU sockets have no printed assignments. The lab assigns distinct
+eight-pin and peripheral positions in the modeled bank. The Advanced GPU
+mesh omits the 12-pin socket detail. Its adapter represents the documented
+connection on the upper rail. The external router remains procedural.
 
 Add `?cableDebug=1` before the route hash and select a cable to show its seated
 anchor axes and node labels. Edit each `point`, `outward`, and `widthAxis` in

@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { createPool, loadConfig } from './config/db.js';
 import { ApiError, endpoint } from './http.js';
+import { requirePrivacyConsent } from './privacy.js';
 import { authenticate } from './middleware/auth.middleware.js';
 import { errorHandler } from './middleware/errorHandler.middleware.js';
 import auth from './routes/auth.routes.js';
@@ -41,7 +42,7 @@ export function createApp(db, origin) {
   }));
   app.use('/api/auth', auth);
   for (const [path, router] of Object.entries({ modules, quizzes, progress, simulation, troubleshooting, feedback, admin })) {
-    app.use(`/api/${path}`, authenticate, router);
+    app.use(`/api/${path}`, authenticate, requirePrivacyConsent, router);
   }
   app.use((req, res, next) => next(new ApiError(404, 'NOT_FOUND', 'Resource not found.')));
   app.use(errorHandler);

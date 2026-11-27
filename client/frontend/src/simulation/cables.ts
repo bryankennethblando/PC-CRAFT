@@ -1,8 +1,9 @@
 import * as T from "three"
 import {
   cableAvailable,
-  cableStatus,
-  ethernetEnds,
+  adapterBase,
+  endAttached,
+  unplugged,
   type CableAnchor,
   type CableDefinition,
   type CableSettings,
@@ -34,7 +35,13 @@ function anchorPose(
       anchor.label +
       " · " +
       (object.name === anchor.node ? object.name : "virtual"),
-    read(): Pose {
+    read(installed = true): Pose {
+      if (!installed)
+        return {
+          point: authored.clone(),
+          outward: vector(anchor.outward),
+          wide: vector(anchor.widthAxis),
+        }
       object.updateWorldMatrix(true, false)
       return {
         point: object.localToWorld(localPoint.clone()),
@@ -49,11 +56,11 @@ const plugSizes = {
   atx: [0.071, 0.013, 0.019],
   eps: [0.029, 0.013, 0.016],
   pwm: [0.012, 0.006, 0.009],
-  switch: [0.008, 0.006, 0.009],
+  switch: [0.007, 0.003, 0.008],
   sataData: [0.015, 0.006, 0.004],
   sataPower: [0.037, 0.007, 0.004],
   rj45: [0.015, 0.013, 0.019],
-  pcie: [0.032, 0.013, 0.016],
+  pcie: [0.02, 0.009, 0.009],
   usb: [0.025, 0.013, 0.015],
   audio: [0.017, 0.008, 0.01],
 }
@@ -159,6 +166,20 @@ export function createCableManager(
     color: 0x29313a,
     roughness: 0.65,
   })
+  const adapter = new T.Group()
+  const mount =
+    definitions.some((cable) => cable.id === "pcie2") &&
+    anchorPose(scene, parts, adapterBase)
+  if (mount) {
+    adapter.name = "RTX 3090 dual 8-pin to 12-pin adapter"
+    // One mounted adapter with two independent PSU leads.
+    box(adapter, fixedPlugMaterial, 0.2, 0.085, 0.09, 0, 0.045)
+    box(adapter, fixedPlugMaterial, 0.41, 0.106, 0.085, 0, 0.1315)
+    const inlet = new T.MeshStandardMaterial({ color: 0x13171b })
+    for (const x of [-0.105, 0.105])
+      box(adapter, inlet, 0.17, 0.075, 0.002, 0, 0.174, x)
+    root.add(adapter)
+  }
   const leads = definitions.map((definition) => {
     const { from, to, wrongPins, via, fixedVia } = definition
     const group = new T.Group()
@@ -179,17 +200,17 @@ export function createCableManager(
       roughness: 0.65,
     })
     const connector = plugSizes[definition.connector]
-    const routerPlugMaterial =
-      definition.connector === "rj45" ? fixedPlugMaterial.clone() : undefined
+    const sourceMaterial = fixedPlugMaterial.clone()
     const start = plug(
       group,
       from.part === "psu" ? outputSize : connector,
       scale,
-      routerPlugMaterial ?? fixedPlugMaterial
+      sourceMaterial
     )
+    const basicGpu = definition.connector === "pcie" && !mount
     const end = plug(
       group,
-      connector,
+      basicGpu ? [0.017, 0.007, 0.005] : connector,
       scale,
       plugMaterial,
       definition.connector === "pcie"
@@ -197,35 +218,6 @@ export function createCableManager(
     const wire = new T.Mesh(new T.BufferGeometry(), cableMaterial)
     const pickWire = new T.Mesh(new T.BufferGeometry(), pickMaterial)
     group.add(wire, pickWire)
-
-    const pinPairs = misplaced
-      ? [target, misplaced].map((anchor) => {
-          const header = new T.Group()
-          const brass = new T.MeshStandardMaterial({
-            color: 0xb89256,
-            metalness: 0.55,
-          })
-          box(
-            header,
-            fixedPlugMaterial,
-            0.009 * scale,
-            0.006 * scale,
-            0.003 * scale,
-            0,
-            -0.0015 * scale
-          )
-          for (const side of [-1, 1]) {
-            const pin = new T.Mesh(
-              new T.BoxGeometry(0.0015 * scale, 0.0015 * scale, 0.004 * scale),
-              brass
-            )
-            pin.position.set(side * 0.0021 * scale, 0, 0.002 * scale)
-            header.add(pin)
-          }
-          group.add(header)
-          return { header, anchor }
-        })
-      : []
 
     if (from.part === null) {
       const router = new T.Group()
@@ -267,35 +259,41 @@ export function createCableManager(
               distance: height * 1.72,
               outside: b.outward,
             }
-          : { center: end.group.position.clone(), distance: height * 0.65 }
+          : {
+              center: start.group.position
+                .clone()
+                .lerp(end.group.position, 0.5),
+              distance: Math.max(
+                height * 0.57,
+                start.group.position.distanceTo(end.group.position) * 1.5
+              ),
+            }
       },
       sync({ placed, selectedCable, wiring }: CableView) {
-        group.visible = cableAvailable(definition, placed)
+        const setting = wiring[definition.id] ?? unplugged
+        const looseSource = !setting.from
+        const looseTarget = !endAttached(setting, "to")
+        group.visible =
+          cableAvailable(definition, placed) || !looseSource || !looseTarget
         if (!group.visible) return
-        const setting = wiring[definition.id]
-        const status = cableStatus(setting)
-        const ends = ethernetEnds(setting)
-        const looseSource = routerPlugMaterial && !ends.router
-        const looseTarget = routerPlugMaterial
-          ? !ends.pc
-          : status === "disconnected"
         const selected = selectedCable === definition.id
         const seatedColor = selected ? 0x2f8393 : 0x29313a
         const looseColor = 0x9b793b
         cableMaterial.color.setHex(selected ? 0x2d829b : definition.color)
-        routerPlugMaterial?.color.setHex(looseSource ? looseColor : seatedColor)
+        sourceMaterial.color.setHex(looseSource ? looseColor : seatedColor)
         plugMaterial.color.setHex(
-          status === "faulted"
+          setting.to === "reset"
             ? 0xba5229
             : looseTarget
               ? looseColor
               : seatedColor
         )
-        const a = source.read()
+        const a = source.read(!from.part || !!placed[from.part])
         const sourceDelta = a.point.clone().sub(source.authored)
-        const seated = target.read()
+        const seated = target.read(!to.part || !!placed[to.part])
         const targetDelta = seated.point.clone().sub(target.authored)
-        const b = status === "faulted" && misplaced ? misplaced.read() : seated
+        const b =
+          setting.to === "reset" && misplaced ? misplaced.read() : seated
         if (looseSource) {
           a.point.addScaledVector(a.outward, 0.023 * scale)
           a.point.addScaledVector(a.wide, 0.009 * scale)
@@ -340,7 +338,6 @@ export function createCableManager(
         previous = transforms
         pose(start.group, a)
         pose(end.group, b)
-        for (const { header, anchor } of pinPairs) pose(header, anchor.read())
         const path = new T.CatmullRomCurve3(points)
         const steps = T.MathUtils.clamp(
           Math.ceil((path.getLength() / height) * 75),
@@ -387,6 +384,10 @@ export function createCableManager(
   )
   return {
     sync(view: CableView) {
+      if (mount) {
+        adapter.visible = Boolean(view.placed.gpu)
+        if (adapter.visible) pose(adapter, mount.read())
+      }
       for (const lead of leads) lead.sync(view)
       const selected = leads.find(
         ({ definition, group }) =>

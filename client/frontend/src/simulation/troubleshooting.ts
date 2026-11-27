@@ -1,5 +1,5 @@
 import type { BuildId, PartId } from "./catalog"
-import type { CableSettings } from "./cableConfig"
+import { cableStatus, type CableSettings } from "./cableConfig.ts"
 
 export type GuidedScenarioId = "TS-001" | "TS-002" | "TS-003" | "TS-005"
 type Test = {
@@ -365,7 +365,8 @@ export const coolerSteps = [
   {
     id: "fan",
     label: "Reconnect CPU fan cable",
-    instruction: "Seat the fan cable on the motherboard CPU_FAN header.",
+    instruction:
+      "In Cables, select CPU cooler PWM and attach its motherboard end to CPU_FAN.",
     feedback:
       "The fan cable is seated in CPU_FAN. Restore power and verify cooling under load.",
   },
@@ -547,24 +548,29 @@ export function epsCompletionKey(userId: string, build: BuildId) {
 }
 
 export function verifyEpsPost(wiring: CableSettings) {
-  if (wiring.eps === "wrong-eps-header")
+  if (wiring.eps?.to === "wrong-eps")
     return {
       passed: false,
       message:
         "Move the EPS plug to the motherboard 8-pin CPU_PWR header. The 24-pin ATX header is for main power.",
     }
-  if (wiring.eps !== "seated")
+  if (wiring.eps?.to === "seated" && !wiring.eps.from)
+    return {
+      passed: false,
+      message: "Connect the EPS lead to the PSU CPU power output.",
+    }
+  if (cableStatus(wiring.eps) !== "connected")
     return {
       passed: false,
       message:
         "Connect the 8-pin EPS 12V cable to the motherboard CPU_PWR header.",
     }
-  if (wiring.atx !== "seated")
+  if (cableStatus(wiring.atx) !== "connected")
     return {
       passed: false,
       message: "Reconnect the 24-pin ATX main power lead.",
     }
-  if (wiring.powerSw !== "power-switch")
+  if (cableStatus(wiring.powerSw) !== "connected")
     return { passed: false, message: "Seat POWER SW on the PWR_SW pins." }
   return { passed: true, message: "The system stays powered and POST begins." }
 }

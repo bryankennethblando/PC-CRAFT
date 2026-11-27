@@ -7,169 +7,159 @@ import {
   cablesBlockingRemoval,
   cablesForView,
   cableStatus,
-  chooseEthernetPort,
-  ethernetEnds,
+  choosePort,
   initialWiring,
-  isCableSetting,
+  portChoices,
   requiredCableProgress,
-  seatedSetting,
+  restoreCable,
+  seated,
+  unplugged,
 } from "./cableConfig.ts"
 
-const standard = [
-  "atx",
-  "eps",
-  "cpuFan",
-  "powerSw",
-  "sataData",
-  "sataPower",
-  "ethernet",
-]
-const advanced = ["pcie", "Fan01", "Fan02", "Fan03", "frontUsb", "frontAudio"]
-
 for (const build of Object.values(builds)) {
-  test(`${build.name} cable inventory and availability`, () => {
-    const inventory = cables[build.id]
-    const ids = inventory.map(({ id }) => id)
-    assert.deepEqual(
-      new Set(ids),
-      new Set(build.id === "basic" ? standard : [...standard, ...advanced])
+  const inventory = cables[build.id]
+  const basic = build.id === "basic"
+  const placed = placements(build, "disassembly", 0)
+  const total = basic ? 8 : 9
+  test(`${build.name} matches its hardware and scenario defaults`, () => {
+    assert.equal(inventory.length, basic ? 8 : 14)
+    assert.equal(
+      new Set(inventory.map((lead) => lead.id)).size,
+      inventory.length
     )
-    assert.equal(ids.length, new Set(ids).size)
-
-    const assembled = placements(build, "disassembly", 0)
-    for (const cable of inventory) {
-      assert.ok(cable.via.length > 0)
-      assert.ok(cableAvailable(cable, assembled))
-      for (const { part } of [cable.from, cable.to]) {
-        if (part) {
-          assert.ok(build.order.includes(part))
-          assert.equal(
-            cableAvailable(cable, { ...assembled, [part]: undefined }),
-            false
-          )
-        }
-        assert.notEqual(part, "ssd")
-      }
-    }
-    const ethernet = inventory.find(({ id }) => id === "ethernet")
-    assert.equal(ethernet.from.part, null)
-    assert.equal(ethernet.to.part, "motherboard")
-    assert.equal(cablesForView(build.id, false), inventory)
-    assert.deepEqual(
-      cablesForView(build.id, true).map(({ id }) => id),
-      ids.filter((id) => id !== "ethernet")
+    assert.equal(
+      inventory.filter((lead) => lead.to.part === "gpu").length,
+      basic ? 1 : 2
     )
-  })
-
-  test(`${build.name} wiring defaults and fault states`, () => {
-    const inventory = cables[build.id]
-    const powerSwitch = inventory.find(({ id }) => id === "powerSw")
-    assert.notDeepEqual(powerSwitch.to.point, powerSwitch.wrongPins.point)
-    assert.equal(cableStatus(seatedSetting(powerSwitch)), "connected")
-    assert.equal(cableStatus("reset-switch"), "faulted")
-
-    const assembly = initialWiring(build.id, false)
-    const disassembly = initialWiring(build.id, true)
-    const troubleshooting = initialWiring(build.id, true, true)
-    for (const cable of inventory) {
-      assert.equal(cableStatus(assembly[cable.id]), "disconnected")
-      assert.equal(cableStatus(disassembly[cable.id]), "connected")
+    assert.ok(
+      inventory.every((lead) =>
+        [lead.from, lead.to].every(
+          (anchor) =>
+            anchor.part === null ||
+            (anchor.node && placed[anchor.part] && anchor.part !== "ssd")
+        )
+      )
+    )
+    assert.deepEqual(
+      cablesForView(build.id, true),
+      inventory.filter((c) => c.id !== "ethernet")
+    )
+    const wiring = initialWiring(build.id, true, true)
+    for (const cable of inventory)
       assert.equal(
-        cableStatus(troubleshooting[cable.id]),
+        cableStatus(wiring[cable.id]),
         cable.scenario === "TS-004" ? "disconnected" : "connected"
       )
-    }
+    assert.deepEqual(wiring.eps, { from: true, to: "open" })
   })
 
-  test(`${build.name} requires both manually chosen Ethernet ports`, () => {
-    const placed = placements(build, "assembly", build.order.length)
-    const ethernet = cables[build.id].find(({ id }) => id === "ethernet")
-    const wiring = { ...initialWiring(build.id, true), ethernet: undefined }
-    const total = build.id === "basic" ? 7 : 8
-
-    assert.equal(ethernet.required, true)
-    assert.equal(isCableSetting(ethernet, "seated"), false)
-    assert.deepEqual(ethernetEnds(wiring.ethernet), {
-      router: false,
-      pc: false,
-    })
-    assert.deepEqual(requiredCableProgress(build.id, placed, wiring), {
-      connected: total - 1,
+  test(`${build.name} checks each end in either order, including optional leads`, () => {
+    const all = initialWiring(build.id, true)
+    const empty = initialWiring(build.id, false)
+    assert.deepEqual(requiredCableProgress(build.id, placed, empty), {
+      connected: 0,
       total,
     })
-
-    for (const [first, second, wrong] of [
-      ["router", "pc", "usb"],
-      ["pc", "router", "wan"],
-    ]) {
-      wiring.ethernet = chooseEthernetPort(undefined, first, "lan").setting
-      assert.equal(isCableSetting(ethernet, wiring.ethernet), true)
-      assert.equal(cableStatus(wiring.ethernet), "disconnected")
-      assert.equal(ethernetEnds(wiring.ethernet)[first], true)
-      assert.equal(ethernetEnds(wiring.ethernet)[second], false)
-      assert.deepEqual(requiredCableProgress(build.id, placed, wiring), {
-        connected: total - 1,
-        total,
-      })
-      const rejected = chooseEthernetPort(wiring.ethernet, second, wrong)
-      assert.match(rejected.feedback, /Incorrect port/)
-      assert.equal(rejected.setting, undefined)
-
-      wiring.ethernet = chooseEthernetPort(
-        wiring.ethernet,
-        second,
-        "lan"
-      ).setting
-      assert.equal(cableStatus(wiring.ethernet), "connected")
-      assert.deepEqual(requiredCableProgress(build.id, placed, wiring), {
-        connected: total,
-        total,
-      })
-      assert.ok(
-        requiredCableProgress(
-          build.id,
-          { ...placed, motherboard: undefined },
-          wiring
-        ).connected < total
-      )
-      assert.equal(
-        chooseEthernetPort(wiring.ethernet, second, "").setting,
-        first === "router" ? "router-only" : "pc-only"
-      )
+    for (const cable of inventory) {
+      for (const [first, last] of [
+        ["from", "to"],
+        ["to", "from"],
+      ]) {
+        const one = choosePort(
+          cable,
+          unplugged,
+          first,
+          cable[first].label
+        ).setting
+        assert.equal(cableStatus(one), "disconnected")
+        assert.deepEqual(
+          restoreCable(cable, JSON.parse(JSON.stringify(one)), "assembly"),
+          one
+        )
+        const partial = { ...all, [cable.id]: one }
+        assert.equal(
+          requiredCableProgress(build.id, placed, partial).connected,
+          total - Number(cable.required)
+        )
+        const choices = portChoices(inventory, cable, last)
+        assert.ok(choices.includes(cable[last].label) && choices.length > 1)
+        const wrong = choosePort(cable, one, last, "unrelated socket")
+        assert.match(wrong.feedback, /Incorrect port/)
+        assert.deepEqual(wrong.setting, one)
+        const both = choosePort(cable, one, last, cable[last].label).setting
+        assert.equal(cableStatus(both), "connected")
+        assert.equal(
+          requiredCableProgress(build.id, placed, { ...all, [cable.id]: both })
+            .connected,
+          total
+        )
+        assert.deepEqual(choosePort(cable, both, last, "").setting, one)
+        // Removing a disconnected peer must leave the attached end accessible.
+        const attached = cable[first].part,
+          free = cable[last].part
+        if (attached) {
+          const remaining = free ? { ...placed, [free]: undefined } : placed
+          assert.ok(
+            cablesBlockingRemoval(
+              build.id,
+              attached,
+              remaining,
+              partial
+            ).includes(cable)
+          )
+          if (free) assert.equal(cableAvailable(cable, remaining), false)
+        }
+        if (free)
+          assert.ok(
+            !cablesBlockingRemoval(build.id, free, placed, partial).includes(
+              cable
+            )
+          )
+      }
     }
+    for (const part of build.order)
+      assert.deepEqual(
+        cablesBlockingRemoval(build.id, part, placed, all),
+        inventory.filter((c) => c.from.part === part || c.to.part === part)
+      )
   })
 
-  test(`${build.name} removal requires every attached cable to be unplugged`, () => {
-    const placed = placements(build, "disassembly", 0)
-    const wiring = initialWiring(build.id, true)
-    const blockers = (part, installed = placed) =>
-      cablesBlockingRemoval(build.id, part, installed, wiring).map(
-        ({ id }) => id
-      )
-
-    for (const part of build.order) {
-      assert.deepEqual(
-        blockers(part),
-        cables[build.id]
-          .filter(({ from, to }) => from.part === part || to.part === part)
-          .map(({ id }) => id)
-      )
-    }
-
-    assert.deepEqual(blockers("hdd"), ["sataData", "sataPower"])
-    wiring.sataData = "unplugged"
-    assert.deepEqual(blockers("hdd"), ["sataPower"])
-    wiring.sataPower = "unplugged"
-    assert.deepEqual(blockers("hdd"), [])
-
-    wiring.powerSw = "reset-switch"
-    wiring.ethernet = "pc-only"
-    assert.ok(blockers("motherboard").includes("powerSw"))
-    assert.ok(blockers("motherboard").includes("ethernet"))
-    wiring.ethernet = "router-only"
-    assert.ok(!blockers("motherboard").includes("ethernet"))
-    assert.ok(
-      !blockers("motherboard", { ...placed, psu: undefined }).includes("atx")
+  test(`${build.name} distinguishes wrong pins, incompatible plugs and old saves`, () => {
+    const byId = (id) => inventory.find((c) => c.id === id)
+    const sw = byId("powerSw"),
+      eps = byId("eps"),
+      lan = byId("ethernet")
+    const wrongPins = choosePort(
+      sw,
+      unplugged,
+      "to",
+      sw.wrongPins.label
+    ).setting
+    const wrongEps = choosePort(eps, seated, "to", byId("atx").to.label).setting
+    assert.equal(cableStatus(wrongPins), "faulted")
+    assert.equal(cableStatus(wrongEps), "faulted")
+    const wiring = { powerSw: wrongPins, eps: wrongEps }
+    assert.deepEqual(
+      cablesBlockingRemoval(build.id, "motherboard", placed, wiring),
+      [sw]
     )
+    assert.deepEqual(cablesBlockingRemoval(build.id, "psu", placed, wiring), [
+      eps,
+    ])
+    assert.deepEqual(restoreCable(eps, "seated", "assembly"), {
+      from: false,
+      to: "seated",
+    })
+    assert.deepEqual(restoreCable(eps, "seated", "disassembly"), seated)
+    assert.deepEqual(
+      restoreCable(lan, "ethernet-connected", "assembly"),
+      seated
+    )
+    assert.deepEqual(restoreCable(lan, "router-only", "assembly"), {
+      from: true,
+      to: "open",
+    })
+    assert.equal(restoreCable(lan, "seated", "assembly"), undefined)
+    assert.equal(restoreCable(lan, wrongPins, "assembly"), undefined)
   })
 }

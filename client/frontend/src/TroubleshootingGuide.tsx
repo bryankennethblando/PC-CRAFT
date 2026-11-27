@@ -239,7 +239,7 @@ export function GuidePanel({
               </strong>
             </p>
             <p>{repairStep.instruction}</p>
-            {repairStep.id !== "paste" && (
+            {repairStep.id !== "paste" && repairStep.id !== "fan" && (
               <Button
                 disabled={busy}
                 onClick={() => act({ type: "cooler", step: repairStep.id })}

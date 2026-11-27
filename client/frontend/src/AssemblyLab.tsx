@@ -40,16 +40,16 @@ import {
   cablesBlockingRemoval,
   cablesForView,
   cableStatus,
-  chooseEthernetPort,
-  ethernetEnds,
-  ethernetPorts,
+  choosePort,
+  endAttached,
+  portChoices,
   initialWiring,
-  isCableSetting,
+  restoreCable,
   requiredCableProgress,
-  seatedSetting,
-  type CableSetting,
+  seated,
+  unplugged,
+  type CableEnd,
   type CableSettings,
-  type EthernetEnd,
 } from "./simulation/cableConfig"
 import type {
   ComponentAction,
@@ -93,8 +93,7 @@ type Action =
   | { type: "target"; value: string }
   | { type: "place"; id: PartId; value: string }
   | { type: "selectCable"; id: string }
-  | { type: "wire"; id: string; setting: CableSetting }
-  | { type: "ethernet-port"; end: EthernetEnd; port: string }
+  | { type: "port"; id: string; end: CableEnd; port: string }
   | { type: "feedback"; message: string; invalid?: boolean }
   | { type: "restart" }
 function start(
@@ -127,9 +126,12 @@ function restore(
     const count = typeof saved === "number" ? saved : saved?.count
     if (Number.isInteger(count) && count >= 0 && count <= build.order.length) {
       const state = start(build, mode, count, false)
+      const installed = placements(build, mode, count)
       for (const cable of cables[build.id]) {
-        const setting = saved?.wiring?.[cable.id]
-        if (isCableSetting(cable, setting)) state.wiring[cable.id] = setting
+        const setting = restoreCable(cable, saved?.wiring?.[cable.id], mode)
+        if (setting) state.wiring[cable.id] = setting
+        else if (!cableAvailable(cable, installed))
+          delete state.wiring[cable.id]
       }
       return state
     }
@@ -160,43 +162,24 @@ function update(
       }
     case "selectCable":
       return { ...state, selectedCable: action.id, cableFeedback: "" }
-    case "wire": {
+    case "port": {
       const cable = cables[build.id].find(({ id }) => id === action.id)
+      if (!cable) return state
+      const setting = state.wiring[cable.id] ?? unplugged
+      // The remaining end can still be unplugged after its peer goes to the tray.
       if (
-        !cable ||
-        cable.connector === "rj45" ||
-        !isCableSetting(cable, action.setting) ||
-        !cableAvailable(cable, placements(build, mode, state.count))
+        !cableAvailable(cable, placements(build, mode, state.count)) &&
+        (action.port || !endAttached(setting, action.end))
       )
         return state
+      const result = choosePort(cable, setting, action.end, action.port)
       return {
         ...state,
-        ...(mode === "disassembly" && { feedback: "", invalid: false }),
-        wiring: { ...state.wiring, [action.id]: action.setting },
+        feedback: "",
+        invalid: false,
+        cableFeedback: result.feedback,
+        wiring: { ...state.wiring, [cable.id]: result.setting },
       }
-    }
-    case "ethernet-port": {
-      const cable = cables[build.id].find(
-        ({ connector }) => connector === "rj45"
-      )
-      if (
-        !cable ||
-        !cableAvailable(cable, placements(build, mode, state.count))
-      )
-        return state
-      const result = chooseEthernetPort(
-        state.wiring[cable.id],
-        action.end,
-        action.port
-      )
-      return result.setting
-        ? {
-            ...state,
-            ...(mode === "disassembly" && { feedback: "", invalid: false }),
-            cableFeedback: "",
-            wiring: { ...state.wiring, [cable.id]: result.setting },
-          }
-        : { ...state, cableFeedback: result.feedback }
     }
     case "target":
       return { ...state, destination: action.value }
@@ -276,7 +259,7 @@ function Workspace({
       if (scenario)
         return { ...start(build, mode, 0, false), selected: scenario.part }
       const state = restore(build, mode, key, troubleshooting)
-      if (epsCase && checked.power) state.wiring.eps = "seated"
+      if (epsCase && checked.power) state.wiring.eps = seated
       return state
     }
   )
@@ -308,8 +291,17 @@ function Workspace({
   }, [build, mode, count, removed])
   const wiring = useMemo<CableSettings>(
     () =>
-      fanUnplugged ? { ...attemptWiring, cpuFan: "unplugged" } : attemptWiring,
-    [attemptWiring, fanUnplugged]
+      coolingCase && coolerStep > 0
+        ? {
+            ...attemptWiring,
+            cpuFan: removed
+              ? unplugged
+              : fanUnplugged
+                ? { from: true, to: "open" }
+                : seated,
+          }
+        : attemptWiring,
+    [attemptWiring, coolingCase, coolerStep, fanUnplugged, removed]
   )
   const cooling = useMemo(
     () =>
@@ -519,7 +511,8 @@ function Workspace({
       dispatch({ type: "select", id: "cpu_cooler" })
       if (action.step === "remove" || action.step === "install")
         scene.current?.resetCamera()
-      if (action.step === "fan") dispatch({ type: "selectCable", id: "cpuFan" })
+      if (action.step === "install" || action.step === "fan")
+        dispatch({ type: "selectCable", id: "cpuFan" })
     } else if (
       next.displayPort !== guide.displayPort ||
       (scenario.display && next.stage === "complete")
@@ -623,21 +616,36 @@ function Workspace({
   const inventory = cablesForView(build.id, Boolean(display))
   const cable = inventory.find(({ id }) => id === selectedCable)
   const available = cable && cableAvailable(cable, placed)
-  const setting = wiring[selectedCable] ?? "unplugged"
+  const setting = wiring[selectedCable] ?? unplugged
   const status = cableStatus(setting)
-  const isEthernet = cable?.connector === "rj45"
-  const ends = ethernetEnds(setting)
-  const isEps = epsCase && cable?.connector === "eps"
-  const wire = (setting: CableSetting) => {
+  const attached = Number(setting.from) + Number(endAttached(setting, "to"))
+  const fanRepair =
+    cable?.id === "cpuFan" &&
+    coolingCase &&
+    (coolerRepair === "remove" || coolerRepair === "fan")
+  const editableCable =
+    !troubleshooting ||
+    fanRepair ||
+    (epsCase && ["atx", "eps", "powerSw", "ethernet"].includes(selectedCable))
+  function selectPort(end: CableEnd, port: string) {
+    if (!cable) return
+    const result = choosePort(cable, setting, end, port)
     if (
       epsCase &&
-      (selectedCable === "eps" ||
-        selectedCable === "atx" ||
-        selectedCable === "powerSw") &&
-      wiring[selectedCable] !== setting
+      selectedCable !== "ethernet" &&
+      (setting.from !== result.setting.from || setting.to !== result.setting.to)
     )
       setChecked((current) => ({ ...current, power: false }))
-    dispatch({ type: "wire", id: selectedCable, setting })
+    dispatch({ type: "port", id: cable.id, end, port })
+    if (
+      fanRepair &&
+      coolerRepair === "fan" &&
+      end === "to" &&
+      port === cable.to.label
+    )
+      setGuide((current) =>
+        advanceGuide(scenario!, current, { type: "cooler", step: "fan" })
+      )
   }
   const cableProgress = requiredCableProgress(build.id, placed, wiring)
   const ethernetConnected = cableStatus(wiring.ethernet) === "connected"
@@ -881,11 +889,13 @@ function Workspace({
                 replacement. Inspect the wiring, then run POST verification.
               </p>
               <p aria-label="EPS connection">
-                {wiring.eps === "seated"
+                {cableStatus(wiring.eps) === "connected"
                   ? "EPS connection valid. The plug is seated in CPU_PWR."
-                  : wiring.eps === "wrong-eps-header"
+                  : wiring.eps?.to === "wrong-eps"
                     ? "EPS connection invalid. The plug cannot seat in the ATX header."
-                    : "EPS connection missing. CPU_PWR is empty."}
+                    : wiring.eps?.to === "seated"
+                      ? "EPS connection incomplete. Connect the PSU CPU power output."
+                      : "EPS connection missing. CPU_PWR is empty."}
               </p>
               <Button
                 variant="outline"
@@ -1046,125 +1056,71 @@ function Workspace({
               <>
                 <p>
                   {cable.from.label} to{" "}
-                  {setting === "reset-switch" && cable.wrongPins
+                  {setting.to === "reset" && cable.wrongPins
                     ? cable.wrongPins.label
                     : cable.to.label}
                 </p>
                 <p
                   role="status"
                   className={
-                    status === "faulted" && available
+                    status === "faulted"
                       ? "lab-feedback invalid"
                       : "lab-feedback"
                   }
                 >
-                  {!available
-                    ? "Install both endpoints to use this cable."
-                    : isEps && setting === "wrong-eps-header"
-                      ? "Invalid header. The EPS plug is still loose."
-                      : isEthernet
-                        ? status === "connected"
-                          ? "Connected · 2 of 2 ends seated"
-                          : `Disconnected · ${Number(ends.router) + Number(ends.pc)} of 2 ends seated`
-                        : status === "faulted"
-                          ? "Faulted. POWER SW is seated on RESET_SW pins."
-                          : status === "connected"
-                            ? "Connected."
-                            : "Disconnected."}
+                  {status === "faulted"
+                    ? setting.to === "reset"
+                      ? "Faulted. POWER SW is seated on RESET_SW pins."
+                      : "Invalid header. The EPS plug is still loose."
+                    : `${status === "connected" ? "Connected" : "Disconnected"} · ${attached} of 2 ends seated`}
+                  {!available &&
+                    " Install both components to connect this cable."}
                 </p>
-                {!scenario &&
-                  (isEps ? (
-                    <label>
-                      EPS motherboard header
-                      <select
-                        value={setting}
-                        disabled={busy || !available}
-                        onChange={(e) => {
-                          const value = e.target.value
-                          if (
-                            value === "unplugged" ||
-                            value === "seated" ||
-                            value === "wrong-eps-header"
-                          )
-                            wire(value)
-                        }}
-                      >
-                        <option value="unplugged">Unplugged</option>
-                        <option value="seated">8-pin CPU_PWR (EPS)</option>
-                        <option value="wrong-eps-header">
-                          24-pin ATX main power header
-                        </option>
-                      </select>
-                    </label>
-                  ) : isEthernet ? (
-                    <>
-                      {(["router", "pc"] as const).map((end) => (
-                        <label key={end}>
-                          {end === "router" ? "Router end port" : "PC end port"}
-                          <select
-                            value={ends[end] ? "lan" : ""}
-                            disabled={busy || !available}
-                            onChange={(e) =>
-                              dispatch({
-                                type: "ethernet-port",
-                                end,
-                                port: e.target.value,
-                              })
-                            }
-                          >
-                            <option value="">Unplugged</option>
-                            {ethernetPorts[end].map(([id, name]) => (
-                              <option key={id} value={id}>
-                                {name}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      ))}
-                      <p role="status" className="lab-feedback invalid">
-                        {cableFeedback}
-                      </p>
-                    </>
-                  ) : cable.wrongPins ? (
-                    <label>
-                      POWER SW pin pair
-                      <select
-                        value={setting}
-                        disabled={busy || !available}
-                        onChange={(e) => {
-                          const value = e.target.value
-                          if (
-                            value === "unplugged" ||
-                            value === "power-switch" ||
-                            value === "reset-switch"
-                          )
-                            wire(value)
-                        }}
-                      >
-                        <option value="unplugged">Disconnected</option>
-                        <option value="power-switch">PWR_SW pins</option>
-                        <option value="reset-switch">RESET_SW pins</option>
-                      </select>
-                    </label>
-                  ) : (
-                    <Button
-                      disabled={busy || !available}
-                      onClick={() =>
-                        wire(
-                          status === "connected"
-                            ? "unplugged"
-                            : seatedSetting(cable)
-                        )
-                      }
-                    >
-                      {status === "connected"
-                        ? "Disconnect cable"
-                        : "Connect cable"}
-                    </Button>
-                  ))}
+                {editableCable &&
+                  (["from", "to"] as const).map((end) => {
+                    const anchor = cable[end]
+                    const value =
+                      end === "to" && setting.to === "wrong-eps"
+                        ? "24-pin ATX header"
+                        : end === "to" && setting.to === "reset"
+                          ? cable.wrongPins?.label
+                          : endAttached(setting, end)
+                            ? anchor.label
+                            : ""
+                    return (
+                      <label key={end}>
+                        {anchor.part ? parts[anchor.part].name : "Router"} end
+                        <select
+                          value={value}
+                          disabled={
+                            busy ||
+                            (fanRepair && end === "from") ||
+                            (!available && !endAttached(setting, end))
+                          }
+                          onChange={(e) => selectPort(end, e.target.value)}
+                        >
+                          <option value="">Unplugged</option>
+                          {portChoices(inventory, cable, end).map((port) => (
+                            <option
+                              key={port}
+                              value={port}
+                              disabled={!available}
+                            >
+                              {port}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )
+                  })}
+                {cableFeedback && (
+                  <p role="status" className="lab-feedback invalid">
+                    {cableFeedback}
+                  </p>
+                )}
                 <Button
                   variant="outline"
-                  disabled={busy || !available}
+                  disabled={busy || (!available && !attached)}
                   onClick={() => scene.current?.inspectCable(cable.id)}
                 >
                   <Crosshair /> Inspect cable

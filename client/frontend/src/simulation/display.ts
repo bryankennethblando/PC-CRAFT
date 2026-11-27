@@ -83,14 +83,10 @@ export function createDisplay(scene: T.Scene, chassis: T.Box3, height: number) {
   const deskY = chassis.min.y + 0.045 * scale
   const deskZ = chassis.max.z + 0.065 * scale
 
-  // Virtual jacks aligned to the upper rear I/O and lower expansion bracket on the Basic build.
+  // Installed Basic GLB faces: hdmi_42 and the RX 580 rear output bracket.
   const rear = chassis.min.x
-  const board = new T.Vector3(
-    rear + 0.022 * scale,
-    0.451 * scale,
-    -0.298 * scale
-  )
-  const gpu = new T.Vector3(rear + 0.023 * scale, 0.252 * scale, -0.247 * scale)
+  const board = new T.Vector3(-0.326, 0.4259, -0.3155)
+  const gpu = new T.Vector3(-0.322, 0.249, -0.243)
   const ports = {
     motherboard: board,
     gpu,
@@ -106,6 +102,7 @@ export function createDisplay(scene: T.Scene, chassis: T.Box3, height: number) {
     socket.name = name
     socket.position.copy(place)
     socket.rotation.y = -Math.PI / 2
+    if (name === "Motherboard HDMI") socket.rotateZ(Math.PI / 2)
     box(socket, insert, 0.016 * scale, 0.008 * scale, 0.004 * scale, 0, 0)
     root.add(socket)
   }
@@ -139,6 +136,11 @@ export function createDisplay(scene: T.Scene, chassis: T.Box3, height: number) {
         previousPort = state.port
         const end = ports[state.port]
         pc.group.position.copy(end)
+        pc.group.rotation.set(
+          0,
+          -Math.PI / 2,
+          state.port === "motherboard" ? Math.PI / 2 : 0
+        )
         const tail = end.clone()
         tail.x -= pc.bootEnd
         const bend = (x: number, y: number, z: number) =>

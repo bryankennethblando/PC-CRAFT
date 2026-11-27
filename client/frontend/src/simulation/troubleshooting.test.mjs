@@ -103,17 +103,22 @@ test("TS-001 blocks early cleaning, paste, cooler installation, fan connection, 
 })
 
 test("TS-004 POST requires EPS at CPU_PWR, main power, and correctly seated POWER SW", () => {
-  const ready = { eps: "seated", atx: "seated", powerSw: "power-switch" }
+  const connected = { from: true, to: "seated" }
+  const ready = { eps: connected, atx: connected, powerSw: connected }
   assert.deepEqual(verifyEpsPost(ready), {
     passed: true,
     message: "The system stays powered and POST begins.",
   })
-  assert.match(verifyEpsPost({ ...ready, eps: "unplugged" }).message, /CPU_PWR/)
+  assert.match(
+    verifyEpsPost({ ...ready, eps: { from: true, to: "open" } }).message,
+    /CPU_PWR/
+  )
   for (const fault of [
-    { eps: "unplugged" },
-    { eps: "wrong-eps-header" },
-    { atx: "unplugged" },
-    { powerSw: "reset-switch" },
+    { eps: { from: false, to: "seated" } },
+    { eps: { from: true, to: "open" } },
+    { eps: { from: true, to: "wrong-eps" } },
+    { atx: { from: false, to: "seated" } },
+    { powerSw: { from: true, to: "reset" } },
   ])
     assert.equal(verifyEpsPost({ ...ready, ...fault }).passed, false)
 })
